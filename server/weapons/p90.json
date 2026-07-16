@@ -1,0 +1,18 @@
+{
+    "max_reserve_ammo": 400,
+    "max_loaded_ammo": 50,
+    "bullets_per_second": 15,
+    "range": 40,
+    "damage": 450,
+    "fully_automatic": true,
+    "chants_of_recoil_per_shot": 35,
+    "upgrade": {
+        "max_reserve_ammo": 400,
+        "max_loaded_ammo": 50,
+        "bullets_per_second": 15,
+        "range": 50,
+        "damage": 2382,
+        "fully_automatic": true,
+        "chants_of_recoil_per_shot": 20
+    }
+}

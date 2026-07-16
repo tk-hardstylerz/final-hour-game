@@ -1,0 +1,8 @@
+/staff. Show online staff.
+/modchat or /m <message>. Send a moderator chat.
+/tellmod <target> <message>. Sends a tell as a moderator to a player - player should respond with /modtell.
+/mute <target> <reason>. Mutes a given player for a given reason.
+/unmute <target>. Unmuted the given player.
+/kick <target> <public/private> <reason>. Kick the given player. If public, reason is shown to everyone, if private, reason is only shown to staff and kicked player.
+/tickets <staff/closed>. Opens the standard tickets menu. Appending staff to the command will show all open tickets and appending closed will show all closed tickets.
+/builderhelp. Show a message with builder commands.

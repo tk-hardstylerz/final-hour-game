@@ -1,0 +1,16 @@
+.vscode/
+dist/
+logs/
+node_modules/
+players/*
+sounds/
+.DS_Store
+.env
+.nyc
+authorised_names
+compose.dev.yml
+compose.yml
+database.sqlite3
+Dockerfile
+npm-debug.log
+sm.txt

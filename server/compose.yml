@@ -1,0 +1,15 @@
+services:
+    final-hour:
+        build:
+            context: .
+            target: final-hour-prod
+        restart: unless-stopped
+        environment:
+            - FH_NO_DISCORD=1
+        volumes:
+            - ./database.sqlite3:/home/node/app/database.sqlite3
+            - ./maps:/home/node/app/maps
+            - ./sm.txt:/home/node/app/sm.txt
+            - ./authorised_names:/home/node/app/authorised_names
+        ports:
+            - 13000:13000/udp

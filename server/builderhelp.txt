@@ -1,0 +1,5 @@
+/getmapdata. Copy the data of the current map to clipboard.
+/setmapdata <data>. Overwrite the current map's data with <data>. Warning! This process is irreversible for now!
+/mkmap <name> <minx> <maxx> <miny> <maxy> <minz> <maxz>. makes a new map using the specified data.
+/chmap <optional-name>. Teleport's you into the map you provided. If "name" is omitted, a menu of available maps will appear, allowing you to select which one you want to be transported to.
+/move <player> <x> <y> <z> <optional-map>. Move the player to the specified location. The default value for "map" is "main" if it is left out.

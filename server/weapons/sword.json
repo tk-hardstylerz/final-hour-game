@@ -1,0 +1,14 @@
+{
+    "bullets_per_second": 1.5,
+    "range": 5,
+    "damage": 200,
+    "melee": true,
+    "chants_of_recoil_per_shot": 5,
+    "upgrade": {
+        "bullets_per_second": 3,
+        "range": 7,
+        "damage": 900,
+        "melee": true,
+        "chants_of_recoil_per_shot": 10
+    }
+}

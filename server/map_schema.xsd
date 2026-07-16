@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="map">
+        <xs:complexType>
+            <xs:all>
+                <xs:element name="head">
+                    <xs:complexType>
+                        <xs:all>
+                            <xs:element name="public" minOccurs="0" maxOccurs="1" />
+                            <xs:element name="roundSounds" minOccurs="0" maxOccurs="1" />
+                        </xs:all>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="body" type="SemanticElementTreeType" />
+                <xs:element name="script" minOccurs="0">
+                    <xs:simpleType>
+                        <xs:restriction base="xs:string">
+                            <xs:whiteSpace value="preserve" />
+                        </xs:restriction>
+                    </xs:simpleType>
+                </xs:element>
+            </xs:all>
+            <xs:attribute name="bounds" type="BoundsType" use="required" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="PlatformType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="type" type="xs:string" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="MusicType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="sound" type="xs:string" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="AmbienceType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="sound" type="xs:string" use="required" />
+        <xs:attribute name="volume" type="xs:double" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="SoundSourceType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="sound" type="xs:string" use="required" />
+        <xs:attribute name="volume" type="xs:double" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="PannableType">
+        <xs:attribute name="position" type="PositionType" use="required" />
+        <xs:attribute name="sound" type="xs:string" use="required" />
+        <xs:attribute name="volume" type="xs:double" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="ZoneType" mixed="true">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="DoorType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="walltype" type="xs:string" use="required" />
+        <xs:attribute name="tiletype" type="xs:string" use="required" />
+        <xs:attribute name="minpoints" type="xs:double" use="required" />
+        <xs:attribute name="activates" type="xs:string" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="ReverbType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="decay_time" type="xs:double" />
+        <xs:attribute name="density" type="xs:double" />
+        <xs:attribute name="diffusion" type="xs:double" />
+        <xs:attribute name="gain" type="xs:double" />
+        <xs:attribute name="gainhf" type="xs:double" />
+        <xs:attribute name="gainlf" type="xs:double" />
+        <xs:attribute name="hfratio" type="xs:double" />
+        <xs:attribute name="lfratio" type="xs:double" />
+        <xs:attribute name="reflections_gain" type="xs:double" />
+        <xs:attribute name="reflections_delay" type="xs:double" />
+        <xs:attribute name="reflections_pan" type="PositionType" />
+        <xs:attribute name="late_reverb_gain" type="xs:double" />
+        <xs:attribute name="late_reverb_delay" type="xs:double" />
+        <xs:attribute name="late_reverb_pan" type="PositionType" />
+        <xs:attribute name="echo_time" type="xs:double" />
+        <xs:attribute name="echo_depth" type="xs:double" />
+        <xs:attribute name="modulation_time" type="xs:double" />
+        <xs:attribute name="modulation_depth" type="xs:double" />
+        <xs:attribute name="air_absorption_gainhf" type="xs:double" />
+        <xs:attribute name="hfrefference" type="xs:double" />
+        <xs:attribute name="lfrefference" type="xs:double" />
+        <xs:attribute name="room_rolloff_factor" type="xs:double" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="WallbuyType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="weaponName" type="xs:string" use="required" />
+        <xs:attribute name="weaponCost" type="xs:double" use="required" />
+        <xs:attribute name="ammoCost" type="xs:double" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="PlayerSpawnType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="ZombieSpawnType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attribute name="name" type="xs:string" />
+        <xs:attribute name="z_bound" type="xs:boolean" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="InteractableType">
+        <xs:attribute name="bounds" type="BoundsType" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="PerkMachineType">
+        <xs:attribute name="position" type="PositionType" use="required" />
+        <xs:attribute name="perk" type="xs:string" use="required" />
+        <xs:attribute name="quantity" type="xs:int" />
+        <xs:attribute name="price" type="xs:double" />
+        <xs:attribute name="allowDuplicate" type="xs:boolean" />
+        <xs:attribute name="sound" type="xs:string" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="PowerSwitchType">
+        <xs:attribute name="position" type="PositionType" use="required" />
+        <xs:attribute name="cost" type="xs:double" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:complexType name="AreaType">
+        <xs:complexContent>
+            <xs:extension base="SemanticElementTreeType">
+                <xs:attribute name="bounds" type="BoundsType" use="required" />
+                <xs:attributeGroup ref="IDClassGroup" />
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    <xs:complexType name="SemanticElementTreeType">
+        <xs:choice maxOccurs="unbounded">
+            <xs:element name="platform" type="PlatformType" />
+            <xs:element name="music" type="MusicType" />
+            <xs:element name="ambience" type="AmbienceType" />
+            <xs:element name="soundSource" type="SoundSourceType" />
+            <xs:element name="pannable" type="PannableType" />
+            <xs:element name="zone" type="ZoneType" />
+            <xs:element name="door" type="DoorType" />
+            <xs:element name="reverb" type="ReverbType" />
+            <xs:element name="wallbuy" type="WallbuyType" />
+            <xs:element name="playerSpawn" type="PlayerSpawnType" />
+            <xs:element name="zombieSpawn" type="ZombieSpawnType" />
+            <xs:element name="interactable" type="InteractableType" />
+            <xs:element name="perkMachine" type="PerkMachineType" />
+            <xs:element name="powerSwitch" type="PowerSwitchType" />
+            <xs:element name="window" type="WindowType" />
+            <xs:element name="area" type="AreaType" />
+        </xs:choice>
+    </xs:complexType>
+
+    <xs:complexType name="WindowType">
+        <xs:attribute name="position" type="PositionType" use="required" />
+        <xs:attribute name="health" type="xs:double" use="required" />
+        <xs:attributeGroup ref="IDClassGroup" />
+    </xs:complexType>
+
+    <xs:attributeGroup name="IDClassGroup">
+        <xs:attribute name="id" type="xs:ID" />
+        <xs:attribute name="class" type="xs:string" />
+    </xs:attributeGroup>
+
+    <xs:simpleType name="BoundsType">
+        <xs:list itemType="xs:int" />
+        <!-- Should be exactly 6 elements but xsd doesn't let us define
+        length.-->
+    </xs:simpleType>
+
+    <xs:simpleType name="PositionType">
+        <xs:list itemType="xs:int" />
+    </xs:simpleType>
+
+</xs:schema>

@@ -1,0 +1,14 @@
+.vscode/
+dist/
+logs/
+maps/
+node_modules/
+players/*
+sounds/
+.DS_Store
+.env
+.nyc
+authorised_names
+database.sqlite3
+npm-debug.log
+sm.txt

@@ -1,0 +1,13 @@
+/help. Show this message.
+/tell <player> <message>. Sends <message> to <player>.
+/reply or /r <message>. Replies to your last tell or opens a menu to pick which conversation to reply to.
+/modtell <message>. Sends a message to the admins.
+/tickets. Opens the tickets menu where you can view, submit and edit your tickets.
+/me <message>. Emotes in chat in the form of nickname message.
+/mainmenu. Opens the main server menu.
+/donate or /d <target username> <amount> <item name>. When within 5 tiles of some one, send them one of your items (Can also use the alt+<player_radar> short cut).
+/block <player name>. Block a person from joining your matches, and from you recieving any chats from them.
+/unblock <player name>. Unblocks a player.
+/blockslist. Shows a list of blocked players.
+/modhelp. Show a message with moderator-only commands (if you are a moderator).
+/builderhelp. Show a message with builder-only commands (if you are a builder)
