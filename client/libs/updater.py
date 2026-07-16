@@ -19,7 +19,7 @@ class Updater(state.State):
         self.downloader = None
         try:
             self.downloader = dl.SmartDL(
-                "https://github.com/Christopher-1808/final-our-by-the_killer/releases/download/v1.0.0/fh.zip",
+                "https://github.com/Christopher-1808/final-hour-game/releases/download/v1.0.0/fh.zip",
                 threads=2,
                 progress_bar=False,
                 timeout=10,
@@ -35,7 +35,7 @@ class Updater(state.State):
             if self.check:
                 speak("Checking version...")
                 request = requests.get(
-                    "https://raw.githubusercontent.com/Christopher-1808/final-our-by-the_killer/main/latest_version.txt",
+                    "https://raw.githubusercontent.com/Christopher-1808/final-hour-game/main/latest_version.txt",
                     timeout=10
                 )
                 request.raise_for_status()
