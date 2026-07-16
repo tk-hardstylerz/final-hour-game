@@ -35,7 +35,7 @@ class Updater(state.State):
             if self.check:
                 speak("Checking version...")
                 request = requests.get(
-                    "https://raw.githubusercontent.com/Christopher-1808/final-hour-game/main/latest_version.txt",
+                    "https://raw.githubusercontent.com/Christopher-1808/final-hour-game/master/latest_version.txt",
                     timeout=10
                 )
                 request.raise_for_status()
