@@ -79,28 +79,35 @@ class VoiceChatRecord(threading.Thread):
         except cyal.exceptions.DeviceNotFoundError: 
             self.audio_input = None
             speak(f"Failed to load audio device: {device}")
+        if self.audio_input is not None:
+            self.audio_input.start()
         self.vc_compression = voice_chat_compression(self.game)
         self.recording = False
         self.running = True
         self.start()
-    
 
     def run(self):
         while self.running:
             time.sleep(0.0005)
-            if not self.recording: continue
             if self.audio_input is None or not options.get("microphone", True) or not options.get("voice_chat", True): continue
             samples = self.audio_input.available_samples
             if samples >= 960:
                 buf = bytearray(960 * 2)
                 self.audio_input.capture_samples(buf)
-                self.vc_compression.put(buf)
+                if self.recording:
+                    self.vc_compression.put(buf)
 
     def voice_chat_finish(self):
         self.voice_chat_finish2()
     
     def voice_chat_finish2(self):
-        if self.audio_input.available_samples < 960: return self.audio_input.capture_samples(bytearray(self.audio_input.available_samples*2))
+        samples = self.audio_input.available_samples
+        if samples < 960:
+            if samples > 0:
+                buf = bytearray(samples * 2)
+                self.audio_input.capture_samples(buf)
+                self.vc_compression.put(buf)
+            return
         buf = bytearray(1920)
         self.audio_input.capture_samples(buf)
         self.vc_compression.put(buf)

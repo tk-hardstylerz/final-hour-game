@@ -737,29 +737,30 @@ class Gameplay(state.State):
         if self.can_run and not self.running: self.run_start(mod)
     
 
+    def _voice_chat_start_impl(self):
+        self.voice_chat.recording = True
+        self.game.direct_soundgroup.play("ui/voxon.ogg", volume=20)
+
+    def _voice_chat_stop_impl(self):
+        self.voice_chat.recording = False
+        self.game.call_after(40, self.voice_chat.voice_chat_finish)
+        self.game.direct_soundgroup.play("ui/voxoff.ogg")
+
     def voice_chat_start(self, mod):
         if self.voice_chat.audio_input is None or not options.get("microphone", True) or not options.get("voice_chat", True): return
         if options.get("voice_mode", "push_to_talk") == "toggle":
             if self.voice_chat.recording:
-                self.voice_chat.audio_input.stop()
-                self.voice_chat.recording = False
-                self.game.call_after(40, self.voice_chat.voice_chat_finish)
+                self._voice_chat_stop_impl()
                 speak("Microphone off")
             else:
-                self.voice_chat.audio_input.start()
-                self.voice_chat.recording = True
+                self._voice_chat_start_impl()
                 speak("Microphone on")
         else:
-            self.voice_chat.audio_input.start()
-            self.voice_chat.recording = True
-        self.game.direct_soundgroup.play("ui/voxon.ogg", volume=20)
+            self._voice_chat_start_impl()
 
     def voice_chat_stop(self, mod):
         if self.voice_chat.audio_input is None or not options.get("microphone", True) or not options.get("voice_chat", True): return
         if options.get("voice_mode", "push_to_talk") == "toggle":
             return
-        self.voice_chat.audio_input.stop()
-        self.voice_chat.recording = False
-        self.game.call_after(40, self.voice_chat.voice_chat_finish)
-        self.game.direct_soundgroup.play("ui/voxoff.ogg")
+        self._voice_chat_stop_impl()
 

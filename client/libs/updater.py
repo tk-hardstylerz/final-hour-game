@@ -19,7 +19,7 @@ class Updater(state.State):
         self.downloader = None
         try:
             self.downloader = dl.SmartDL(
-                "https://github.com/Christopher-1808/final-hour-game/releases/download/v1.0.0/fh.zip",
+                "https://github.com/Christopher-1808/final-hour-game/releases/download/v1.5.0/fh.zip",
                 threads=2,
                 progress_bar=False,
                 timeout=10,
