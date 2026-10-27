@@ -47,11 +47,17 @@ class EventHandeler:
                 True,
                 sound=data.get("sound", ""),
             )
-            speak(data["text"], data["interupt"], id=f'buffer_{data["buffer"]}')
+            buf = next((b for b in buffer.buffers if b.name == data["buffer"]), None)
+            if buf is None or not buf.muted:
+                speak(data["text"], data["interupt"], id=f'buffer_{data["buffer"]}')
         else:
             speak(data["text"], data["interupt"], not data["buffer"])
             if data["sound"]:
                 self.game.direct_soundgroup.play(data["sound"])
+
+    def copy_map_data(self, data):
+        pyperclip.copy(data["data"])
+        speak("Map data copied to clipboard.")
 
     def online(self, data):
         text = f'{data["username"]} came online.'
@@ -199,6 +205,9 @@ class EventHandeler:
         def on_select(value, close):
             if close:
                 self.gameplay.pop_last_substate()
+            if data["event"] == "builder_select" and value == "pasteMapData":
+                self.client.send(consts.CHANNEL_MENUS, "new_mapdata", {"value": pyperclip.paste()})
+                return
             self.client.send(consts.CHANNEL_MENUS, data["event"], {"value": value})
 
         m = menu.Menu(self.game, data["title"])
@@ -284,6 +293,8 @@ class EventHandeler:
             self.gameplay.player.locked = False
 
     def set_hp(self, data):
+        if max_hp := data.get("max"):
+            self.gameplay.player.max_hp = max_hp
         if self.gameplay.player.lock_weapon:
             return
         self.gameplay.player.hp = data["amount"]
@@ -342,7 +353,6 @@ class EventHandeler:
         self.gameplay.player.double_tap_root_beer = data["value"]
 
     def speed_cola(self, data):
-        print("hi")
         if not data:
             return
         if "value" not in data:
@@ -354,7 +364,13 @@ class EventHandeler:
             return
         if "value" not in data:
             data["value"] = False
-        self.gameplay.player.staminup = data["value"]
+        player = self.gameplay.player
+        player.staminup = data["value"]
+        player.walktime = 230 if player.staminup else 270
+        player.runtime = 155 if player.staminup else 184
+        player.movetime = (
+            player.runtime if self.gameplay.running else player.walktime
+        )
 
 
 

@@ -127,7 +127,7 @@ export default class PerkMachine extends GameObject {
             interactor.speak(
                 `You purchased ${this.perkType.name} for ${
                     this.price
-                } points. It's now active! (Perk slot ${slot + 1} of 4)`
+                } points. It's now active! (Perk slot ${slot + 1} of ${interactor.perks.perks.length})`
             );
             this.quantity--;
         } else {

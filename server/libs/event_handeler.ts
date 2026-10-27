@@ -59,8 +59,21 @@ export default class Event_handeler {
             player.destroy();
         }
     }
-    private builderState = new Map<any, { type: string; step: number; params: Record<string, string> }>();
-    private readonly BUILDER_PARAMS: Record<string, Array<{name: string; prompt: string; type: "input" | "menu"; options?: Array<{title: string; value: string}>}>> = {
+    private builderState = new Map<any, { type: string; phase: "coords" | "params"; step: number; params: Record<string, string> }>();
+    private readonly COORD_FIELDS = [
+        { name: "minx", prompt: "Enter the minimum x. Press enter when you're done." },
+        { name: "maxx", prompt: "Enter the maximum x. Press enter when you're done." },
+        { name: "miny", prompt: "Enter the minimum y. Press enter when you're done." },
+        { name: "maxy", prompt: "Enter the maximum y. Press enter when you're done." },
+        { name: "minz", prompt: "Enter the minimum z. Press enter when you're done." },
+        { name: "maxz", prompt: "Enter the maximum z. Press enter when you're done." },
+    ];
+    private readonly SINGLE_COORD_FIELDS = [
+        { name: "x", prompt: "Enter the x. Press enter when you're done." },
+        { name: "y", prompt: "Enter the y. Press enter when you're done." },
+        { name: "z", prompt: "Enter the z. Press enter when you're done." },
+    ];
+    private readonly BUILDER_PARAMS: Record<string, Array<{name: string; prompt: string; type: "input" | "menu"; options?: Array<{title: string; value: string}>; default?: string}>> = {
         ambience: [
             { name: "sound", prompt: "Enter sound file path", type: "input" },
             { name: "volume", prompt: "Enter volume (1-100)", type: "input" },
@@ -91,6 +104,7 @@ export default class Event_handeler {
                 { title: "Quick revive", value: "quick_revive" },
                 { title: "Speed cola", value: "speed_cola" },
                 { title: "Double tap root beer", value: "double_tap_root_beer" },
+                { title: "Whos who", value: "whos_who" },
             ]},
         ],
         wallbuy: [
@@ -113,8 +127,100 @@ export default class Event_handeler {
         window: [
             { name: "hp", prompt: "Enter window hitpoints", type: "input" },
         ],
+        platform: [
+            { name: "type", prompt: "Select platform material", type: "menu", options: [
+                { title: "Wood", value: "wood" },
+                { title: "Concrete", value: "concrete" },
+                { title: "Metal", value: "metal" },
+                { title: "Carpet", value: "carpet" },
+                { title: "Wall", value: "wall" },
+                { title: "Wall wood", value: "wallwood" },
+                { title: "Wall concrete", value: "wallconcrete" },
+                { title: "Wall glass", value: "wallglass" },
+                { title: "Deep water", value: "deep_water" },
+                { title: "Underwater", value: "underwater" },
+                { title: "Snow", value: "snow" },
+                { title: "Air", value: "air" },
+            ]},
+        ],
+        wall: [
+            { name: "type", prompt: "Select wall material", type: "menu", options: [
+                { title: "Wall concrete", value: "wallconcrete" },
+                { title: "Wall wood", value: "wallwood" },
+                { title: "Wall glass", value: "wallglass" },
+                { title: "Wall", value: "wall" },
+            ]},
+        ],
+        zone: [
+            { name: "text", prompt: "Enter zone description text", type: "input" },
+        ],
+        soundSource: [
+            { name: "sound", prompt: "Enter sound file path", type: "input" },
+            { name: "volume", prompt: "Enter volume (1-100)", type: "input" },
+        ],
+        Music: [
+            { name: "sound", prompt: "Enter music file path", type: "input" },
+            { name: "volume", prompt: "Enter volume (1-100, default 50)", type: "input" },
+        ],
+        playerSpawn: [],
+        zombieSpawn: [],
+        interactable: [],
+        staircase: [
+            { name: "tile", prompt: "Select staircase floor material", type: "menu", options: [
+                { title: "Wood", value: "wood" },
+                { title: "Concrete", value: "concrete" },
+                { title: "Metal", value: "metal" },
+                { title: "Carpet", value: "carpet" },
+                { title: "Wall", value: "wall" },
+                { title: "Wall wood", value: "wallwood" },
+                { title: "Wall concrete", value: "wallconcrete" },
+                { title: "Wall glass", value: "wallglass" },
+                { title: "Snow", value: "snow" },
+            ]},
+            { name: "walltile", prompt: "Select staircase wall material", type: "menu", options: [
+                { title: "Wall concrete", value: "wallconcrete" },
+                { title: "Wall wood", value: "wallwood" },
+                { title: "Wall glass", value: "wallglass" },
+                { title: "Wall", value: "wall" },
+            ]},
+            { name: "dir", prompt: "Enter direction (0 to 7, 0 is north)", type: "input", default: "0" },
+            { name: "zonetext", prompt: "Enter zone text (empty for none)", type: "input" },
+        ],
+        location: [
+            { name: "name", prompt: "Enter the location name", type: "input" },
+        ],
+        dz: [
+            { name: "soundname", prompt: "Enter sound file path", type: "input" },
+            { name: "volume", prompt: "Enter volume (1-100)", type: "input", default: "5" },
+        ],
+        bounded_source: [
+            { name: "soundname", prompt: "Enter sound file path", type: "input" },
+            { name: "volume", prompt: "Enter volume (1-100)", type: "input", default: "5" },
+            { name: "data", prompt: "Enter extra data (empty for none)", type: "input" },
+        ],
+        sub_tile: [
+            { name: "type", prompt: "Select sub tile material", type: "menu", options: [
+                { title: "Wood", value: "wood" },
+                { title: "Concrete", value: "concrete" },
+                { title: "Metal", value: "metal" },
+                { title: "Carpet", value: "carpet" },
+                { title: "Wall", value: "wall" },
+                { title: "Wall wood", value: "wallwood" },
+                { title: "Wall concrete", value: "wallconcrete" },
+                { title: "Wall glass", value: "wallglass" },
+                { title: "Deep water", value: "deep_water" },
+                { title: "Underwater", value: "underwater" },
+                { title: "Snow", value: "snow" },
+                { title: "Air", value: "air" },
+            ]},
+        ],
+        object: [
+            { name: "name", prompt: "Enter the object name", type: "input" },
+            { name: "dir", prompt: "Enter direction (0 to 7, 0 is north)", type: "input", default: "0" },
+            { name: "id", prompt: "Enter object id (empty for none)", type: "input" },
+        ],
     };
-    private send_builder_prompt(player: Player, peer: any, param: {name: string; prompt: string; type: "input" | "menu"; options?: Array<{title: string; value: string}>}): void {
+    private send_builder_prompt(player: Player, peer: any, param: {name: string; prompt: string; type: "input" | "menu"; options?: Array<{title: string; value: string}>; default?: string}): void {
         if (param.type === "menu") {
             player.send(consts.channel_misc, "make_menu", {
                 title: param.prompt,
@@ -126,8 +232,32 @@ export default class Event_handeler {
                 prompt: param.prompt,
                 event: "builder_next_param",
                 data: {},
+                default: param.default || "",
             });
         }
+    }
+    private sendCoordPrompt(player: Player, peer: any, state: { type: string; phase: "coords" | "params"; step: number; params: Record<string, string> }, idx: number): void {
+        var fields = state.type === "location" ? this.SINGLE_COORD_FIELDS : this.COORD_FIELDS;
+        if (idx >= fields.length) {
+            state.phase = "params";
+            state.step = 0;
+            var paramDefs = this.BUILDER_PARAMS[state.type];
+            if (!paramDefs || paramDefs.length === 0) {
+                this.builderState.delete(peer);
+                this.place_builder_element(player, state.type, state.params);
+                return;
+            }
+            this.send_builder_prompt(player, peer, paramDefs[0]);
+            return;
+        }
+        var field = fields[idx];
+        var def = field.name.indexOf("x") !== -1 ? Math.round(player.x) : field.name.indexOf("y") !== -1 ? Math.round(player.y) : Math.round(player.z);
+        player.send(consts.channel_misc, "make_input", {
+            prompt: field.prompt,
+            event: "builder_coord_param",
+            data: {},
+            default: String(def),
+        });
     }
     async place_builder_element(player: Player, type: string, params: Record<string, string>): Promise<void> {
         if (!(player.builder || player.moderator || player.contributor)) {
@@ -142,82 +272,180 @@ export default class Event_handeler {
         var y = Math.round(player.y);
         var z = Math.round(player.z);
         try {
-            var xml = this.generate_builder_xml(type, params, x, y, z);
-            if (!xml) {
+            var line = this.generate_builder_line(type, params, x, y, z);
+            if (!line) {
                 player.speak("Invalid parameters for " + type + ".");
                 return;
             }
             var mapData = player.map.real_data;
-            var insertPos = mapData.lastIndexOf("</body>");
-            if (insertPos === -1) {
-                player.speak("Cannot edit this map.");
-                return;
-            }
-            var newMapData = mapData.slice(0, insertPos) + "\n        " + xml + "\n" + mapData.slice(insertPos);
+            var newMapData = mapData.trimEnd() + "\n" + line + "\n";
             await player.map.update(newMapData);
-            player.speak(type + " placed at " + x + " " + y + " " + z, true, "tell");
+            player.speak(type + " placed.", true, "tell");
         } catch (err: any) {
             player.speak("Error: " + (err.message || err));
         }
     }
-    generate_builder_xml(type: string, params: Record<string, string>, x: number, y: number, z: number): string | null {
+    private getBuilderBounds(params: Record<string, string>, x: number, y: number, z: number, def: { minx: number; maxx: number; miny: number; maxy: number; minz: number; maxz: number; }): { minx: number; maxx: number; miny: number; maxy: number; minz: number; maxz: number; } | null {
+        var nums = [params.minx, params.maxx, params.miny, params.maxy, params.minz, params.maxz].map((v) => (v === undefined ? NaN : parseInt(v, 10)));
+        if (nums.every((n) => !isNaN(n))) {
+            return { minx: nums[0], maxx: nums[1], miny: nums[2], maxy: nums[3], minz: nums[4], maxz: nums[5] };
+        }
+        return {
+            minx: x + def.minx, maxx: x + def.maxx,
+            miny: y + def.miny, maxy: y + def.maxy,
+            minz: z + def.minz, maxz: z + def.maxz,
+        };
+    }
+    generate_builder_line(type: string, params: Record<string, string>, x: number, y: number, z: number): string | null {
         switch (type) {
-            case "ambience":
-                return `<ambience bounds="${x - 5} ${x + 5} ${y - 5} ${y + 5} ${z} ${z}" sound="${params.sound}" volume="${params.volume}"/>`;
+            case "platform": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -2, maxx: 2, miny: -2, maxy: 2, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `platform ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.type || "wood"}`;
+            }
+            case "wall": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -2, maxx: 2, miny: -2, maxy: 2, minz: 0, maxz: 4 });
+                if (!b) return null;
+                return `platform ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.type || "wallconcrete"}`;
+            }
+            case "zone": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: -2, maxz: 2 });
+                if (!b) return null;
+                return `zone ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.text || "zone"}`;
+            }
             case "reverb": {
-                var density = params.density ? ` density="${params.density}"` : "";
-                return `<reverb bounds="${x - 5} ${x + 5} ${y - 5} ${y + 5} ${z - 1} ${z + 5}" decayTime="${params.decayTime}" diffusion="${params.diffusion}"${density}/>`;
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: -1, maxz: 5 });
+                if (!b) return null;
+                var density = params.density ? ` density=${params.density}` : "";
+                return `reverb ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} decayTime=${params.decayTime || "0.8"} diffusion=${params.diffusion || "0.3"}${density}`;
+            }
+            case "ambience": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: -2, maxz: 2 });
+                if (!b) return null;
+                return `ambience ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.sound} ${params.volume || "5"}`;
+            }
+            case "soundSource": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: -2, maxz: 2 });
+                if (!b) return null;
+                return `soundSource ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.sound} ${params.volume || "5"}`;
+            }
+            case "Music": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -50, maxx: 50, miny: -50, maxy: 50, minz: -10, maxz: 10 });
+                if (!b) return null;
+                return `Music ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} sound=${params.sound} volume=${params.volume || "50"}`;
             }
             case "door": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -1, maxx: 1, miny: -1, maxy: 1, minz: 0, maxz: 5 });
+                if (!b) return null;
                 var minpoints = params.minpoints || "0";
-                return `<door bounds="${x - 1} ${x + 1} ${y - 1} ${y + 1} ${z} ${z + 5}" walltype="${params.walltype}" tiletype="${params.tiletype}" minpoints="${minpoints}"/>`;
+                return `door ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.walltype} ${params.tiletype} ${minpoints}`;
+            }
+            case "window": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: 0, maxx: 0, miny: 0, maxy: 0, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `window ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} hp=${params.hp || "5000"}`;
             }
             case "perkMachine": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: 0, maxx: 0, miny: 0, maxy: 0, minz: 0, maxz: 0 });
+                if (!b) return null;
                 var perk = params.perk || "juggernog";
-                return `<perkMachine position="${x} ${y} ${z}" sound="perks/music/${perk}.ogg" perk="${perk}"/>`;
+                return `perkMachine ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} perk=${perk} sound=perks/music/${perk}.ogg`;
             }
-            case "wallbuy":
-                return `<wallbuy bounds="${x - 1} ${x + 1} ${y - 1} ${y + 1} ${z} ${z}" weaponName="${params.weapon}" weaponCost="${params.cost}" ammoCost="${params.ammoCost}"/>`;
-            case "powerSwitch":
-                return `<powerSwitch position="${x} ${y} ${z}" cost="${params.cost || "0"}"/>`;
-            case "window":
-                return `<window position="${x} ${y} ${z}" hp="${params.hp || "5000"}"/>`;
+            case "wallbuy": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -1, maxx: 1, miny: -1, maxy: 1, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `wallbuy ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.weapon} ${params.cost} ${params.ammoCost}`;
+            }
+            case "powerSwitch": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: 0, maxx: 0, miny: 0, maxy: 0, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `powerSwitch ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} cost=${params.cost || "0"}`;
+            }
+            case "playerSpawn": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -3, maxx: 3, miny: -3, maxy: 3, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `playerSpawn ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz}`;
+            }
+            case "zombieSpawn": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `zombieSpawn ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz}`;
+            }
+            case "interactable": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: 0, maxx: 0, miny: 0, maxy: 0, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `interactable ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz}`;
+            }
+            case "staircase": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -1, maxx: 1, miny: -1, maxy: 1, minz: 0, maxz: 3 });
+                if (!b) return null;
+                var zonetext = params.zonetext ? ` ${params.zonetext}` : "";
+                return `staircase ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.tile || "concrete"} ${params.walltile || "wallconcrete"} ${params.dir || "0"}${zonetext}`;
+            }
+            case "location": {
+                var lx = parseInt(params.x, 10);
+                var ly = parseInt(params.y, 10);
+                var lz = parseInt(params.z, 10);
+                if (isNaN(lx)) lx = x;
+                if (isNaN(ly)) ly = y;
+                if (isNaN(lz)) lz = z;
+                return `location ${lx} ${ly} ${lz} ${params.name || "location"}`;
+            }
+            case "dz": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: -2, maxz: 2 });
+                if (!b) return null;
+                return `dz ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.soundname} ${params.volume || "5"}`;
+            }
+            case "bounded_source": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -5, maxx: 5, miny: -5, maxy: 5, minz: -2, maxz: 2 });
+                if (!b) return null;
+                var data = params.data ? ` ${params.data}` : "";
+                return `bounded_source ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.soundname} ${params.volume || "5"}${data}`;
+            }
+            case "sub_tile": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: -2, maxx: 2, miny: -2, maxy: 2, minz: 0, maxz: 0 });
+                if (!b) return null;
+                return `sub_tile ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.type || "concrete"}`;
+            }
+            case "object": {
+                var b = this.getBuilderBounds(params, x, y, z, { minx: 0, maxx: 0, miny: 0, maxy: 0, minz: 0, maxz: 0 });
+                if (!b) return null;
+                var id = params.id ? ` ${params.id}` : "";
+                return `object ${b.minx} ${b.maxx} ${b.miny} ${b.maxy} ${b.minz} ${b.maxz} ${params.name || "object"} ${params.dir || "0"}${id}`;
+            }
             default:
                 return null;
         }
     }
     private findElementsAt(player: Player): Array<{text: string; line: number}> {
         if (!player.map || !player.map.real_data) return [];
-        var body = player.map.real_data;
-        var bodyMatch = body.match(/<body>[\s\S]*?<\/body>/);
-        if (!bodyMatch) return [];
-        var lines = bodyMatch[0].split("\n");
+        var lines = player.map.real_data.split("\n");
         var results: Array<{text: string; line: number}> = [];
+        var lineIdx = 0;
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
-            if (!line || line.startsWith("<!--") || line.startsWith("{#")) continue;
-            var posMatch = line.match(/position="(-?\d+[\.\d]*) (-?\d+[\.\d]*) (-?\d+[\.\d]*)"/);
-            if (posMatch) {
-                var x = parseFloat(posMatch[1]);
-                var y = parseFloat(posMatch[2]);
-                var z = parseFloat(posMatch[3]);
-                if (Math.round(x) === Math.round(player.x) && Math.round(y) === Math.round(player.y) && Math.round(z) === Math.round(player.z)) {
-                    var tagName = line.match(/<(\w+)/)?.[1] || "unknown";
-                    results.push({ text: `${tagName} at ${x} ${y} ${z}`, line: i });
-                    continue;
-                }
+            if (!line || line.startsWith("#") || line.startsWith("//")) continue;
+            var args = line.split(/\s+/);
+            var cmd = args[0];
+            if ([
+                "platform", "wall", "zone", "door", "soundSource", "src",
+                "ambience", "music", "Music", "reverb", "rv",
+                "playerSpawn", "zombieSpawn", "wallbuy", "window",
+                "perkMachine", "powerSwitch", "interactable", "staircase",
+                "location", "dz", "bounded_source", "sub_tile", "object"
+            ].indexOf(cmd) === -1) continue;
+            var nums: number[] = [];
+            for (var j = 1; j < args.length; j++) {
+                var n = parseFloat(args[j]);
+                if (!isNaN(n)) nums.push(n);
+                else break;
             }
-            var boundsMatch = line.match(/bounds="(-?\d+[\.\d]*) (-?\d+[\.\d]*) (-?\d+[\.\d]*) (-?\d+[\.\d]*) (-?\d+[\.\d]*) (-?\d+[\.\d]*)"/);
-            if (boundsMatch) {
-                var minx = parseFloat(boundsMatch[1]);
-                var maxx = parseFloat(boundsMatch[2]);
-                var miny = parseFloat(boundsMatch[3]);
-                var maxy = parseFloat(boundsMatch[4]);
-                var minz = parseFloat(boundsMatch[5]);
-                var maxz = parseFloat(boundsMatch[6]);
+            if (nums.length >= 6) {
+                var minx = nums[0], maxx = nums[1];
+                var miny = nums[2], maxy = nums[3];
+                var minz = nums[4], maxz = nums[5];
                 if (player.x >= minx && player.x <= maxx && player.y >= miny && player.y <= maxy && player.z >= minz && player.z <= maxz) {
-                    var tagName = line.match(/<(\w+)/)?.[1] || "unknown";
-                    results.push({ text: `${tagName} bounds [${minx} ${maxx}] [${miny} ${maxy}] [${minz} ${maxz}]`, line: i });
+                    results.push({ text: `${cmd} [${minx} ${maxx}] [${miny} ${maxy}] [${minz} ${maxz}]`, line: i });
                 }
             }
         }
@@ -507,6 +735,7 @@ export default class Event_handeler {
                     return;
                 }
                 player.chat(data.message);
+                this.server.ai_relay.on_chat(player, data.message);
             }
         },
         async map_chat(peer, data) {
@@ -676,8 +905,38 @@ export default class Event_handeler {
                         }
                         maps_menu.send(peer);
                     } else {
-                        //a map is given
-                        player.create_match(data.map);
+                        //a map is given but no mode yet, ask which game mode to play
+                        if (!data.mode) {
+                            var mode_menu = new menu(
+                                this.server,
+                                "Choose a game mode",
+                                "mainmenu"
+                            );
+                            mode_menu.add_option("Solo match (Aria revives you)", {
+                                action: "create",
+                                map: data.map,
+                                mode: "solo",
+                            });
+                            mode_menu.add_option(
+                                "Cooperative match (others can join)",
+                                {
+                                    action: "create",
+                                    map: data.map,
+                                    mode: "multiplayer",
+                                }
+                            );
+                            mode_menu.add_option(
+                                "Match with Aria (she fights alongside you)",
+                                {
+                                    action: "create",
+                                    map: data.map,
+                                    mode: "coop_aria",
+                                }
+                            );
+                            mode_menu.send(peer);
+                            break;
+                        }
+                        player.create_match(data.map, data.mode);
                         player.change_map(this.server.maps[data.map]);
                         player.speak(
                             "You are in exploration mode",
@@ -689,7 +948,14 @@ export default class Event_handeler {
                 case "join":
                     var playable_game = false;
                     for (let i of this.server.games) {
-                        if (!i.started && !player.user.block_list.includes(i.owner.user.username) || !i.started && !i.owner.user.block_list.includes(player.user.username)) {
+                        if (
+                            !player.user.block_list.includes(
+                                i.owner.user.username
+                            ) &&
+                            !i.owner.user.block_list.includes(
+                                player.user.username
+                            )
+                        ) {
                             playable_game = true;
                             break;
                         }
@@ -706,6 +972,7 @@ export default class Event_handeler {
                         for (let i of this.server.games) {
                             if (
                                 !i.started &&
+                                (i as any).mode !== "solo" &&
                                 i.public_ &&
                                 i.players.size < i.max_players
                             ) {
@@ -713,13 +980,24 @@ export default class Event_handeler {
                                 else games_menu.add_option(i.name, {
                                     action: "join",
                                     game: i.name,
+                                    spectator: false,
+                                });
+                            }
+                        }
+                        for (let i of this.server.games) {
+                            if (i.started && i.public_) {
+                                if (player.user.block_list.includes(i.owner.user.username) || i.owner.user.block_list.includes(player.user.username)) continue; 
+                                else games_menu.add_option(`Spectate: ${i.name}`, {
+                                    action: "join",
+                                    game: i.name,
+                                    spectator: true,
                                 });
                             }
                         }
                         games_menu.send(peer);
                     } else {
                         //a game is given
-                        player.join_match(data.game);
+                        player.join_match(data.game, data.spectator);
                     }
                     break;
                 case "who_in":
@@ -754,7 +1032,7 @@ export default class Event_handeler {
                     }
                     break;
                 case "leave":
-                    if (player.game)
+                    if (player.game && !player.spectator)
                         player.user.log({
                             eventType: "match_leave",
                             eventData: {
@@ -762,9 +1040,16 @@ export default class Event_handeler {
                                 player_count: player.game.players.size - 1,
                             },
                         });
-                    if (!player.game?.started)
+                    if (player.spectator) {
+                        player.spectator = false;
+                        player.game = undefined;
                         player.change_map(this.server.maps["main"]);
-                    player.game?.remove_player(player);
+                        player.speak("You are no longer spectating", true, "match");
+                    } else {
+                        if (!player.game?.started)
+                            player.change_map(this.server.maps["main"]);
+                        player.game?.remove_player(player);
+                    }
                     break;
             }
         },
@@ -831,18 +1116,35 @@ export default class Event_handeler {
             if (!player) return;
             if (player.builder || player.moderator || player.contributor) {
                 player.send(consts.channel_misc, "make_menu", {
-                    title: "Builder menu",
+                    title: "Builder menu. Please select an option",
                     event: "builder_select",
                     options: [
-                        { title: "Place ambience", value: "ambience", close: true },
+                        { title: "Place platform", value: "platform", close: true },
+                        { title: "Place wall", value: "wall", close: true },
+                        { title: "Place staircase", value: "staircase", close: true },
+                        { title: "Place zone", value: "zone", close: true },
+                        { title: "Place location", value: "location", close: true },
                         { title: "Place reverb zone", value: "reverb", close: true },
+                        { title: "Place demper zone", value: "dz", close: true },
+                        { title: "Place sound source", value: "soundSource", close: true },
+                        { title: "Place bounded sound source", value: "bounded_source", close: true },
+                        { title: "Place ambience", value: "ambience", close: true },
+                        { title: "Place music", value: "Music", close: true },
+                        { title: "Place sub tile", value: "sub_tile", close: true },
+                        { title: "Place player spawn", value: "playerSpawn", close: true },
+                        { title: "Place zombie spawn", value: "zombieSpawn", close: true },
                         { title: "Place door", value: "door", close: true },
+                        { title: "Place window", value: "window", close: true },
                         { title: "Place perk machine", value: "perkMachine", close: true },
                         { title: "Place wall weapon", value: "wallbuy", close: true },
                         { title: "Place power switch", value: "powerSwitch", close: true },
-                        { title: "Place window", value: "window", close: true },
+                        { title: "Place interactable", value: "interactable", close: true },
+                        { title: "Place object", value: "object", close: true },
                         { title: "Remove element", value: "removeElement", close: true },
                         { title: "List elements here", value: "listElements", close: true },
+                        { title: "Edit line", value: "editLine", close: true },
+                        { title: "Get the map data", value: "getMapData", close: true },
+                        { title: "Paste the map data that is on your clipboard", value: "pasteMapData", close: true },
                     ],
                 });
             }
@@ -871,13 +1173,116 @@ export default class Event_handeler {
                 }
                 return;
             }
+            if (type === "getMapData") {
+                if (!player.map || !player.map.real_data) {
+                    player.speak("No map loaded.");
+                    return;
+                }
+                player.send(consts.channel_misc, "copy_map_data", { data: player.map.real_data });
+                return;
+            }
+            if (type === "editLine") {
+                if (!player.map || !player.map.real_data) {
+                    player.speak("No map loaded.");
+                    return;
+                }
+                var lines = player.map.real_data.split("\n");
+                var options: Array<{title: string; value: string; close: boolean}> = [];
+                for (var i = 0; i < lines.length; i++) {
+                    var ltext = lines[i].trim();
+                    if (!ltext) continue;
+                    options.push({ title: `${i + 1}: ${ltext.substring(0, 50)}`, value: String(i), close: true });
+                }
+                if (options.length === 0) {
+                    player.speak("The map has no lines.");
+                    return;
+                }
+                player.send(consts.channel_misc, "make_menu", {
+                    title: "Select the line to edit",
+                    event: "builder_edit_pick",
+                    options: options,
+                });
+                return;
+            }
             var paramDefs = this.BUILDER_PARAMS[type];
-            if (!paramDefs || paramDefs.length === 0) {
+            if (!paramDefs) {
                 player.speak("Unknown element type.");
                 return;
             }
-            this.builderState.set(peer, { type: type, step: 0, params: {} });
-            this.send_builder_prompt(player, peer, paramDefs[0]);
+            this.builderState.set(peer, { type: type, phase: "coords", step: 0, params: {} });
+            player.send(consts.channel_misc, "make_menu", {
+                title: "How do you want to specify coordinates?",
+                event: "builder_coords",
+                options: [
+                    { title: "Use player position", value: "position", close: true },
+                    { title: "Type coordinates", value: "coords", close: true },
+                ],
+            });
+        },
+        builder_edit_pick(peer, data) {
+            var player = this.server.get_by_peer(peer);
+            if (!(player && (player.builder || player.moderator || player.contributor))) return;
+            if (!player.map || !player.map.real_data) return;
+            var lineIdx = parseInt(data.value, 10);
+            if (isNaN(lineIdx)) return;
+            var lines = player.map.real_data.split("\n");
+            if (lineIdx < 0 || lineIdx >= lines.length) return;
+            player.send(consts.channel_misc, "make_input", {
+                prompt: "Edit the line. Press enter when you're done.",
+                event: "builder_edit_line",
+                data: { line: lineIdx },
+                default: lines[lineIdx],
+            });
+        },
+        builder_edit_line(peer, data) {
+            var player = this.server.get_by_peer(peer);
+            if (!(player && (player.builder || player.moderator || player.contributor))) return;
+            if (!player.map || !player.map.real_data) return;
+            var lineIdx = data.data?.line;
+            if (lineIdx === undefined) return;
+            var lines = player.map.real_data.split("\n");
+            if (lineIdx < 0 || lineIdx >= lines.length) return;
+            lines[lineIdx] = (data.value || "").trim();
+            player.map.update(lines.join("\n"));
+            player.speak("Line edited.");
+        },
+        new_mapdata(peer, data) {
+            var player = this.server.get_by_peer(peer);
+            if (!(player && (player.builder || player.moderator || player.contributor))) return;
+            var content = (data.value || "").trim();
+            if (!content) {
+                player.speak("The clipboard is empty.");
+                return;
+            }
+            this.builderState.set(peer, { type: "pasteMapData", phase: "params", step: 0, params: { content: content } });
+            player.send(consts.channel_misc, "make_menu", {
+                title: "Do you want to overwrite the map data with the pasted data?",
+                event: "builder_paste_confirm",
+                options: [
+                    { title: "Yes", value: "yes", close: true },
+                    { title: "No", value: "no", close: true },
+                ],
+            });
+        },
+        builder_paste_confirm(peer, data) {
+            var player = this.server.get_by_peer(peer);
+            if (!(player && (player.builder || player.moderator || player.contributor))) return;
+            var state = this.builderState.get(peer);
+            if (!state || state.type !== "pasteMapData") {
+                player.speak("Invalid builder state.");
+                return;
+            }
+            this.builderState.delete(peer);
+            if (data.value !== "yes") {
+                player.speak("Paste cancelled.");
+                return;
+            }
+            if (!player.map || !player.map.real_data) {
+                player.speak("No map loaded.");
+                return;
+            }
+            player.map.update(state.params.content);
+            player.speak("Map data replaced.");
         },
         builder_next_param(peer, data) {
             var player = this.server.get_by_peer(peer);
@@ -915,19 +1320,49 @@ export default class Event_handeler {
                 this.place_builder_element(player, state.type, state.params);
             }
         },
+        builder_coords(peer, data) {
+            var player = this.server.get_by_peer(peer);
+            if (!player) return;
+            var state = this.builderState.get(peer);
+            if (!state || state.phase !== "coords") {
+                player.speak("Invalid builder state.");
+                return;
+            }
+            if (data.value === "coords") {
+                this.sendCoordPrompt(player, peer, state, 0);
+            } else {
+                state.params["coords"] = "position";
+                var fields = state.type === "location" ? this.SINGLE_COORD_FIELDS : this.COORD_FIELDS;
+                this.sendCoordPrompt(player, peer, state, fields.length);
+            }
+        },
+        builder_coord_param(peer, data) {
+            var player = this.server.get_by_peer(peer);
+            if (!player) return;
+            var state = this.builderState.get(peer);
+            if (!state || state.phase !== "coords") {
+                player.speak("Invalid builder state.");
+                return;
+            }
+            var fields = state.type === "location" ? this.SINGLE_COORD_FIELDS : this.COORD_FIELDS;
+            var field = fields[state.step];
+            if (!field) {
+                player.speak("Invalid builder state.");
+                return;
+            }
+            state.params[field.name] = (data.value || "").trim();
+            state.step++;
+            this.sendCoordPrompt(player, peer, state, state.step);
+        },
         remove_element(peer, data) {
             var player = this.server.get_by_peer(peer);
-            if (!player || !player.builder) return;
+            if (!(player && (player.builder || player.moderator || player.contributor))) return;
             var line = data.value?.line;
             if (line === undefined) return;
-            var body = player.map.real_data;
-            var bodyMatch = body.match(/<body>[\s\S]*?<\/body>/);
-            if (!bodyMatch) return;
-            var lines = bodyMatch[0].split("\n");
+            var lines = player.map.real_data.split("\n");
             if (line < 0 || line >= lines.length) return;
             lines.splice(line, 1);
-            var newBody = lines.join("\n");
-            var newMapData = body.replace(/<body>[\s\S]*?<\/body>/, newBody);
+            var newMapData = lines.join("\n");
             player.map.update(newMapData);
             player.speak("Element removed.");
         },
@@ -1733,6 +2168,21 @@ export default class Event_handeler {
     async handel_command(player: Player, commandString: string) {
         let commandParts = commandString.slice(1).split(" ");
         switch (commandParts[0]) {
+            case "ask":
+                var askMessage = commandParts.slice(1).join(" ");
+                if (askMessage != "") {
+                    this.server.ai_relay.on_ask(player, askMessage);
+                    player.speak(
+                        "Your message was sent to Aria. ",
+                        true,
+                        "notifications"
+                    );
+                } else {
+                    player.speak(
+                        "You need to send contents in your message. Usage: /ask <message>"
+                    );
+                }
+                break;
             case "me":
                 var message = commandParts.slice(1).join(" ");
                 if (message != "") {

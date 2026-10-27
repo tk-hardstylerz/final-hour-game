@@ -75,7 +75,7 @@ export default class Weapon {
         this.dry_fire_path = `${sounds_path}/dry`;
         this.impact_path = `${sounds_path}/impact`;
         this.reload_path = `${sounds_path}/reload`;
-        this.speed_reload_path = `${sounds_path}/speeed_reload`;
+        this.speed_reload_path = `${sounds_path}/speed_reload`;
         this.fire_time = fire_time;
         this.reload_time = reload_time;
         this.automatic = automatic;
@@ -106,6 +106,7 @@ export default class Weapon {
         };
     }
     fire(angle = 0, pitch = 0) {
+        if (this.owner instanceof Player && this.owner.spectator) return;
         if (this.melee || this.ammo >= this.shot_cost) {
             this.owner.play_sound(
                 this.fire_path + "/",

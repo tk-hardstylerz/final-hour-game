@@ -15,6 +15,21 @@ import DoublePointsPowerup from "./powerups/double_points";
 import InstakillPowerup from "./powerups/instakill";
 import TickExecutor from "./tick_executor";
 import NukePowerUp from "./powerups/nuke";
+import * as movement from "./movement";
+import timer from "./timer";
+import * as aria_voice from "./aria_voice";
+import GroqAi from "./groq_ai";
+import fs from "fs";
+
+type AriaIntent =
+    | "attack"
+    | "hold"
+    | "retreat"
+    | "follow"
+    | "defend"
+    | "reload"
+    | "wander";
+type AriaThreat = { target: any; dist: number };
 export default class Zomby_game extends game {
     round_sounds_path: string;
     possible_powerups: (typeof Powerup)[] = [
@@ -37,6 +52,34 @@ export default class Zomby_game extends game {
     killed_zombies: number = 0;
     double_points: boolean = false;
     instakill: boolean = false;
+    mode: string = "multiplayer";
+    aria_bot?: Player;
+    aria_bot_active: boolean = false;
+    aria_decision_ms: number = 260;
+    aria_fire_delay_ms: number = 320;
+    aria_move_ms: number = 340;
+    aria_max_weapon_range: number = 24;
+    aria_stance: AriaIntent = "attack";
+    private aria_brain_enabled: boolean = false;
+    private aria_brain_groq: GroqAi | null = null;
+    private aria_brain_timer?: timer;
+    private aria_brain_ms: number = 3000;
+    private aria_brain_inflight: boolean = false;
+    private aria_brain_failures: number = 0;
+    private aria_brain_context: string = "";
+    private aria_path_key: string = "";
+    private aria_path: any[] = [];
+    private aria_path_at: number = 0;
+    private aria_path_pending: boolean = false;
+    private aria_think_timer?: timer;
+    private aria_fire_timer?: timer;
+    private aria_move_timer?: timer;
+    private aria_voice_timer?: timer;
+    private aria_random_quip_ms: number = 45000;
+    private aria_low_hp_spoken: boolean = false;
+    private aria_was_dead: boolean = false;
+    private aria_kills_seen: number = 0;
+    private aria_voice_playing: boolean = false;
     protected tickExecutor: TickExecutor;
     constructor(server: Server, owner: Player, name: string, map: WorldMap) {
         super(server, owner, name, map);
@@ -85,6 +128,604 @@ export default class Zomby_game extends game {
         }
         player.character = undefined;
     }
+    spawn_aria_bot(): void {
+        if (this.aria_bot || this.started) return;
+        const stub_peer: any = {
+            send: () => {},
+            disconnect: () => {},
+        };
+        const stub_user: any = {
+            username: "Aria",
+            muted: false,
+            moderator: false,
+            builder: false,
+            contributor: false,
+            high_kills: 0,
+            high_points: 0,
+            high_accuracy: 0,
+            block_list: [],
+            invisible: false,
+            save: async () => {},
+            log: () => {},
+        };
+        const bot = new Player({
+            server: this.server,
+            peer: stub_peer,
+            user: stub_user,
+            map: this.map,
+            hp: 500,
+        });
+        bot.isBot = true;
+        this.add_player(bot, true);
+        bot.weapon_manager.switch_weapon(
+            Math.max(
+                0,
+                bot.weapon_manager.weapons.findIndex((w) => w.name === "mp7")
+            )
+        );
+        this.aria_bot = bot;
+        this.aria_bot_active = true;
+        this.aria_think_timer = new timer();
+        this.aria_fire_timer = new timer();
+        this.aria_move_timer = new timer();
+        this.aria_voice_timer = new timer();
+        this.aria_random_quip_ms = random.random_number(30000, 90000);
+        this.aria_low_hp_spoken = false;
+        this.aria_was_dead = false;
+        this.aria_voice_playing = false;
+        this.aria_kills_seen = this.scores[bot.name] ? this.scores[bot.name].kills || 0 : 0;
+        this.aria_stance = "attack";
+        this.aria_brain_enabled = false;
+        const brain_flag = process.env.ARIA_BRAIN;
+        const want_brain =
+            brain_flag &&
+            brain_flag !== "0" &&
+            brain_flag.toLowerCase() !== "false";
+        if (want_brain) {
+            const groq = new GroqAi();
+            groq.load();
+            if (groq.enabled) {
+                try {
+                    this.aria_brain_context = fs
+                        .readFileSync("./ai_fh_battle_context.txt", "utf8")
+                        .trim();
+                } catch {
+                    this.aria_brain_context = "";
+                }
+                if (this.aria_brain_context) {
+                    this.aria_brain_groq = groq;
+                    this.aria_brain_enabled = true;
+                    if (this.server && (this.server as any).system_log)
+                        (this.server as any).system_log(
+                            "Aria brain enabled (ARIA_BRAIN)."
+                        );
+                } else if (this.server && (this.server as any).system_log) {
+                    (this.server as any).system_log(
+                        "Aria brain: ai_fh_battle_context.txt not found."
+                    );
+                }
+            }
+        }
+        this.aria_brain_timer = new timer();
+        bot.change_map(this.map);
+        this.speak(`${bot.name} joins the match!`, false, "match");
+    }
+    private aria_say_voice(category: aria_voice.QuipCategory): void {
+        if (this.aria_voice_playing) return;
+        const bot = this.aria_bot;
+        if (!bot) return;
+        const quips = aria_voice.ARIA_QUIPS[category];
+        if (!quips || quips.length === 0) return;
+        const text = quips[random.random_number(0, quips.length - 1)];
+        if (this.server && (this.server as any).system_log) {
+            (this.server as any).system_log(`Aria says (voice): ${text}`);
+        }
+        this.aria_voice_playing = true;
+        aria_voice
+            .synthesize_frames(text)
+            .then((frames: Buffer[] | null) => aria_voice.stream_opus_frames(bot, frames))
+            .catch(() => {})
+            .finally(() => {
+                this.aria_voice_playing = false;
+            });
+    }
+    async aria_bot_behavior(): Promise<void> {
+        const bot = this.aria_bot;
+        if (!bot || !this.started || !this.aria_bot_active) return;
+        if (!bot.weapon_manager.active_weapon) {
+            const idx = bot.weapon_manager.weapons.findIndex(
+                (w) => w.name === "mp7" && !w.melee
+            );
+            if (idx >= 0) bot.weapon_manager.switch_weapon(idx);
+        }
+        const score: any = this.scores[bot.name];
+        const kills = score ? score.kills || 0 : 0;
+        if (bot.dead && !this.aria_was_dead) {
+            this.aria_was_dead = true;
+            this.aria_low_hp_spoken = false;
+            this.aria_say_voice("death");
+            return;
+        }
+        if (!bot.dead && this.aria_was_dead) {
+            this.aria_was_dead = false;
+            this.aria_say_voice("revive");
+        }
+        if (bot.dead) return;
+        if (bot.maxHp > 0) {
+            if (bot.hp <= bot.maxHp * 0.3) {
+                if (!this.aria_low_hp_spoken) {
+                    this.aria_low_hp_spoken = true;
+                    this.aria_say_voice("low_hp");
+                }
+            } else {
+                this.aria_low_hp_spoken = false;
+            }
+        }
+        if (kills > this.aria_kills_seen) {
+            this.aria_kills_seen = kills;
+            if (random.random_number(1, 100) <= 50) this.aria_say_voice("kill");
+        }
+        if (this.aria_voice_timer!.elapsed >= this.aria_random_quip_ms) {
+            this.aria_say_voice("random");
+            this.aria_random_quip_ms = random.random_number(30000, 90000);
+            this.aria_voice_timer!.restart();
+        }
+        if (this.aria_think_timer!.elapsed < this.aria_decision_ms) return;
+        // LLM brain: coarse tactical intent, non-blocking (starts a request,
+        // never holds the game tick). Falls back to the scripted controller.
+        if (this.aria_brain_enabled) void this.aria_think_brain();
+        // reload as soon as the magazine is empty
+        const weapon = bot.weapon_manager.active_weapon;
+        if (weapon && !weapon.melee && weapon.ammo <= 0) {
+            bot.weapon_manager.reload();
+            this.aria_think_timer!.restart();
+            return;
+        }
+        this.aria_think_timer!.restart();
+        const zombies = this.aria_alive_zombies();
+        if (zombies.length === 0) {
+            this.aria_path = [];
+            if (random.random_number(1, 100) <= 40) this.aria_wander();
+            return;
+        }
+        // self-defense: melee anything that got too close
+        const closest = zombies[0];
+        if (closest.dist <= 1.4) {
+            this.aria_use_knife();
+            if (this.aria_fire_timer!.elapsed >= this.aria_fire_delay_ms) {
+                this.aria_fire_timer!.restart();
+                this.aria_fire_at(closest.target);
+            }
+            return;
+        }
+        const stance = this.aria_stance || "attack";
+        switch (stance) {
+            case "retreat":
+                this.aria_combat_retreat(zombies);
+                break;
+            case "hold":
+                this.aria_hold_position(zombies);
+                break;
+            case "follow":
+                this.aria_follow_teammate(zombies);
+                break;
+            case "defend":
+                this.aria_defend_player(zombies);
+                break;
+            case "reload":
+                this.aria_hold_position(zombies);
+                break;
+            default:
+                this.aria_attack_mode(zombies);
+                break;
+        }
+    }
+    private aria_alive_zombies(): AriaThreat[] {
+        const bot = this.aria_bot as Player;
+        const out: AriaThreat[] = [];
+        const objects: any[] = this.map.objects.get({});
+        for (const obj of objects) {
+            if (
+                (obj instanceof zomby || obj instanceof hellhound) &&
+                !obj.dead
+            ) {
+                out.push({
+                    target: obj,
+                    dist: movement.get_distance(bot, obj),
+                });
+            }
+        }
+        out.sort((a, b) => a.dist - b.dist);
+        return out;
+    }
+    private aria_heading_to(target: any): number {
+        const bot = this.aria_bot as Player;
+        const dx = target.x - bot.x;
+        const dy = target.y - bot.y;
+        return (Math.atan2(dx, dy) * (180 / Math.PI) + 360) % 360;
+    }
+    private aria_line_of_fire(target: any): boolean {
+        const bot = this.aria_bot as Player;
+        const dist = movement.get_distance(bot, target);
+        if (dist <= 1) return true;
+        const angle = this.aria_heading_to(target);
+        let pitch = 0;
+        if (Math.abs(target.z - bot.z) > 1) {
+            pitch = Math.atan((target.z - bot.z) / dist) * (180 / Math.PI);
+        }
+        const steps = Math.max(1, Math.ceil(dist));
+        let x = bot.x;
+        let y = bot.y;
+        let z = bot.z;
+        for (let i = 0; i < steps; i++) {
+            const next = movement.move([x, y, z], angle, pitch, 1);
+            x = next.x;
+            y = next.y;
+            z = next.z;
+            const tx = Math.trunc(x);
+            const ty = Math.trunc(y);
+            if (tx === Math.trunc(target.x) && ty === Math.trunc(target.y)) {
+                return true;
+            }
+            const tile = this.map.get_tile_at(tx, ty, Math.trunc(z));
+            if (tile && tile.startsWith("wall")) return false;
+        }
+        return true;
+    }
+    private aria_fire_at(target: any): void {
+        const bot = this.aria_bot as Player;
+        const dist = movement.get_distance(bot, target);
+        const angle = this.aria_heading_to(target);
+        let pitch = 0;
+        if (Math.abs(target.z - bot.z) > 1 && dist > 1) {
+            pitch = Math.atan((target.z - bot.z) / dist) * (180 / Math.PI);
+        }
+        bot.weapon_manager.fire(angle, pitch);
+    }
+    private aria_use_knife(): void {
+        const bot = this.aria_bot as Player;
+        const active = bot.weapon_manager.active_weapon;
+        if (active && active.melee) return;
+        const knifeIdx = bot.weapon_manager.weapons.findIndex((w) => w.melee);
+        if (knifeIdx >= 0) bot.weapon_manager.switch_weapon(knifeIdx);
+    }
+    private aria_ensure_ranged(): void {
+        const bot = this.aria_bot as Player;
+        const active = bot.weapon_manager.active_weapon;
+        if (active && !active.melee && active.ammo > 0) return;
+        let best = -1;
+        let bestRange = -1;
+        bot.weapon_manager.weapons.forEach((w, i) => {
+            if (!w.melee && w.range > bestRange) {
+                bestRange = w.range;
+                best = i;
+            }
+        });
+        if (best >= 0) bot.weapon_manager.switch_weapon(best);
+    }
+    private aria_attack_mode(zombies: AriaThreat[]): void {
+        this.aria_ensure_ranged();
+        const shootable = zombies.filter(
+            (t) =>
+                t.dist <= this.aria_max_weapon_range &&
+                this.aria_line_of_fire(t.target)
+        );
+        if (shootable.length > 0) {
+            if (this.aria_fire_timer!.elapsed >= this.aria_fire_delay_ms) {
+                this.aria_fire_timer!.restart();
+                if (random.random_number(1, 100) <= 18) this.aria_sidestep();
+                this.aria_fire_at(shootable[0].target);
+            }
+            return;
+        }
+        this.aria_move_towards(zombies[0].target);
+    }
+    private aria_hold_position(zombies: AriaThreat[]): void {
+        this.aria_ensure_ranged();
+        const shootable = zombies.filter(
+            (t) =>
+                t.dist <= this.aria_max_weapon_range &&
+                this.aria_line_of_fire(t.target)
+        );
+        if (shootable.length > 0) {
+            if (this.aria_fire_timer!.elapsed >= this.aria_fire_delay_ms) {
+                this.aria_fire_timer!.restart();
+                this.aria_fire_at(shootable[0].target);
+            }
+            return;
+        }
+        if (zombies[0].dist <= 2.0) this.aria_back_away();
+    }
+    private aria_combat_retreat(zombies: AriaThreat[]): void {
+        this.aria_ensure_ranged();
+        const shootable = zombies.filter(
+            (t) =>
+                t.dist <= this.aria_max_weapon_range &&
+                this.aria_line_of_fire(t.target)
+        );
+        if (
+            shootable.length > 0 &&
+            this.aria_fire_timer!.elapsed >= this.aria_fire_delay_ms
+        ) {
+            this.aria_fire_timer!.restart();
+            this.aria_fire_at(shootable[0].target);
+        }
+        this.aria_back_away();
+    }
+    private aria_follow_teammate(zombies: AriaThreat[]): void {
+        this.aria_ensure_ranged();
+        const shootable = zombies.filter(
+            (t) =>
+                t.dist <= this.aria_max_weapon_range &&
+                this.aria_line_of_fire(t.target)
+        );
+        if (
+            shootable.length > 0 &&
+            this.aria_fire_timer!.elapsed >= this.aria_fire_delay_ms
+        ) {
+            this.aria_fire_timer!.restart();
+            this.aria_fire_at(shootable[0].target);
+            return;
+        }
+        const ally = this.aria_teammate();
+        if (ally) {
+            this.aria_move_to(
+                Math.trunc(ally.x),
+                Math.trunc(ally.y),
+                Math.trunc(ally.z),
+                true
+            );
+        }
+    }
+    private aria_defend_player(zombies: AriaThreat[]): void {
+        this.aria_ensure_ranged();
+        const shootable = zombies.filter(
+            (t) =>
+                t.dist <= this.aria_max_weapon_range &&
+                this.aria_line_of_fire(t.target)
+        );
+        if (
+            shootable.length > 0 &&
+            this.aria_fire_timer!.elapsed >= this.aria_fire_delay_ms
+        ) {
+            this.aria_fire_timer!.restart();
+            this.aria_fire_at(shootable[0].target);
+            return;
+        }
+        const ally = this.aria_teammate();
+        if (ally && movement.get_distance(this.aria_bot!, ally) > 3) {
+            this.aria_move_to(
+                Math.trunc(ally.x),
+                Math.trunc(ally.y),
+                Math.trunc(ally.z),
+                false
+            );
+        }
+    }
+    private aria_teammate(): Player | null {
+        const bot = this.aria_bot as Player;
+        let best: Player | null = null;
+        let bestDist = Infinity;
+        for (const p of this.players) {
+            if (p === bot || p.dead || p.spectator) continue;
+            const d = movement.get_distance(bot, p);
+            if (d < bestDist) {
+                bestDist = d;
+                best = p;
+            }
+        }
+        return best;
+    }
+    private aria_sidestep(): void {
+        const bot = this.aria_bot as Player;
+        if (this.aria_move_timer!.elapsed < this.aria_move_ms) return;
+        const zombies = this.aria_alive_zombies();
+        if (zombies.length === 0) return;
+        this.aria_move_timer!.restart();
+        const n = zombies[0].target;
+        const dx = n.x - bot.x;
+        const dy = n.y - bot.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const side = random.random_number(0, 1) === 0 ? -2 : 2;
+        const tx = Math.trunc(bot.x + (-dy / len) * side);
+        const ty = Math.trunc(bot.y + (dx / len) * side);
+        if (this.map.is_unwalkable(this.map, tx, ty, bot.z)) return;
+        bot.move(tx, ty, bot.z, true, "walk");
+    }
+    private aria_back_away(): void {
+        const bot = this.aria_bot as Player;
+        const zombies = this.aria_alive_zombies();
+        if (zombies.length === 0) return;
+        const ally = this.aria_teammate();
+        if (ally && movement.get_distance(bot, ally) > 1.5) {
+            this.aria_move_to(
+                Math.trunc(ally.x),
+                Math.trunc(ally.y),
+                Math.trunc(ally.z),
+                true
+            );
+            return;
+        }
+        const n = zombies[0].target;
+        const tx = Math.trunc(bot.x + (bot.x - n.x));
+        const ty = Math.trunc(bot.y + (bot.y - n.y));
+        if (this.aria_move_timer!.elapsed < this.aria_move_ms) return;
+        if (this.map.is_unwalkable(this.map, tx, ty, bot.z)) return;
+        this.aria_move_timer!.restart();
+        bot.move(tx, ty, bot.z, true, "run");
+    }
+    private aria_move_towards(target: any): void {
+        const bot = this.aria_bot as Player;
+        const dist = movement.get_distance(bot, target);
+        const run = dist > this.aria_max_weapon_range * 1.5;
+        this.aria_move_to(
+            Math.trunc(target.x),
+            Math.trunc(target.y),
+            Math.trunc(target.z),
+            run
+        );
+    }
+    private aria_move_to(
+        tx: number,
+        ty: number,
+        tz: number,
+        run: boolean
+    ): void {
+        const bot = this.aria_bot as Player;
+        if (this.aria_move_timer!.elapsed < this.aria_move_ms) return;
+        this.aria_move_timer!.restart();
+        const key = `${tx},${ty},${tz}`;
+        const now = Date.now();
+        const stale = this.aria_path_key !== key || now - this.aria_path_at > 600;
+        if (stale && !this.aria_path_pending) {
+            this.aria_path_key = key;
+            this.aria_path_at = now;
+            this.aria_path_pending = true;
+            this.map
+                .find_path(
+                    Math.trunc(bot.x),
+                    Math.trunc(bot.y),
+                    Math.trunc(bot.z),
+                    tx,
+                    ty,
+                    tz
+                )
+                .then((path: any) => {
+                    this.aria_path_pending = false;
+                    this.aria_path = path || [];
+                    const b = this.aria_bot as Player | undefined;
+                    if (b) this.aria_step_along(this.aria_path, run);
+                })
+                .catch(() => {
+                    this.aria_path_pending = false;
+                    this.aria_path = [];
+                });
+            return;
+        }
+        this.aria_step_along(this.aria_path, run);
+    }
+    private aria_step_along(path: any[], run: boolean): void {
+        const bot = this.aria_bot as Player;
+        if (!path || path.length === 0) return;
+        for (const point of path) {
+            if (point.x !== Math.trunc(bot.x) || point.y !== Math.trunc(bot.y)) {
+                bot.move(
+                    point.x,
+                    point.y,
+                    point.z ?? bot.z,
+                    true,
+                    run ? "run" : "walk"
+                );
+                return;
+            }
+        }
+    }
+    private aria_wander(): void {
+        const bot = this.aria_bot as Player;
+        if (this.aria_move_timer!.elapsed < this.aria_move_ms) return;
+        this.aria_move_timer!.restart();
+        const tx = Math.trunc(bot.x + random.random_number(-4, 4));
+        const ty = Math.trunc(bot.y + random.random_number(-4, 4));
+        if (this.map.is_unwalkable(this.map, tx, ty, bot.z)) return;
+        bot.move(tx, ty, bot.z, true, "walk");
+    }
+    private aria_compass(deg: number): string {
+        const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        const idx = ((Math.round(deg / 45) % 8) + 8) % 8;
+        return dirs[idx];
+    }
+    private aria_snapshot_state(): string {
+        const bot = this.aria_bot as Player;
+        const weapon = bot.weapon_manager.active_weapon;
+        const zombies = this.aria_alive_zombies();
+        const near = zombies.filter((t) => t.dist <= 10).length;
+        let nearest = "none";
+        if (zombies.length > 0) {
+            const n = zombies[0].target;
+            const angle = this.aria_heading_to(n);
+            nearest = `dist=${Math.round(zombies[0].dist)} dir=${this.aria_compass(angle)}`;
+        }
+        const allies: string[] = [];
+        for (const p of this.players) {
+            if (p === bot) continue;
+            allies.push(`${p.user.username} ${p.dead ? "dead" : "alive"}`);
+        }
+        const ammoInfo =
+            weapon && !weapon.melee
+                ? `${weapon.ammo} / ${weapon.max_ammo}`
+                : "melee";
+        const score = this.scores[bot.name];
+        const lines = [
+            `round=${this.round}`,
+            `zombies_current=${this.current_zombies}`,
+            `zombies_total_left=${this.total_zombies}`,
+            `dog_round=${this.dog_round ? "yes" : "no"}`,
+            `hp_percent=${bot.maxHp ? Math.round((bot.hp / bot.maxHp) * 100) : 0}`,
+            `weapon=${weapon ? weapon.name : "none"}`,
+            `ammo=${ammoInfo}`,
+            `points=${score ? score.points : 0}`,
+            `kills=${score ? score.kills : 0}`,
+            `nearest_zombie=${nearest}`,
+            `zombies_close_10=${near}`,
+            `teammates=${allies.join(", ") || "none"}`,
+        ];
+        return lines.join("\n");
+    }
+    private aria_parse_intent(raw: string): AriaIntent {
+        const m = raw.match(/"intent"\s*:\s*"(\w+)"/i);
+        if (m) {
+            const v = m[1].toLowerCase();
+            const allowed: AriaIntent[] = [
+                "attack",
+                "hold",
+                "retreat",
+                "follow",
+                "defend",
+                "reload",
+                "wander",
+            ];
+            if ((allowed as string[]).includes(v)) return v as AriaIntent;
+        }
+        return "attack";
+    }
+    private async aria_think_brain(): Promise<void> {
+        if (!this.aria_brain_enabled || this.aria_brain_inflight) return;
+        if (!this.aria_brain_timer) return;
+        if (this.aria_brain_timer.elapsed < this.aria_brain_ms) return;
+        if (this.aria_brain_failures >= 3) return;
+        this.aria_brain_timer.restart();
+        this.aria_brain_inflight = true;
+        const snapshot = this.aria_snapshot_state();
+        try {
+            const raw = await this.aria_brain_groq!.complete(
+                this.aria_brain_context,
+                snapshot,
+                80
+            );
+            const intent = this.aria_parse_intent(raw);
+            if (intent !== this.aria_stance) {
+                this.aria_stance = intent;
+                if (this.server && (this.server as any).system_log) {
+                    (this.server as any).system_log(
+                        `Aria brain: stance -> ${intent}`
+                    );
+                }
+            }
+            this.aria_brain_failures = 0;
+        } catch (err) {
+            this.aria_brain_failures++;
+            if (this.aria_brain_failures >= 3) {
+                if (this.server && (this.server as any).system_log) {
+                    (this.server as any).system_log(
+                        "Aria brain disabled (3 consecutive errors): " +
+                            (err instanceof Error ? err.message : String(err))
+                    );
+                }
+            }
+        } finally {
+            this.aria_brain_inflight = false;
+        }
+    }
     /// `powerup_list` is meant to only be set when you want to limit the chosen powerups.
     async randomize_powerup(
         percentage = 2,
@@ -131,6 +772,12 @@ export default class Zomby_game extends game {
     start(): void {
         super.start();
         this.players.forEach((player) => player.reset_to_defaults());
+        if (this.aria_bot) {
+            const idx = this.aria_bot.weapon_manager.weapons.findIndex(
+                (w) => w.name === "mp7"
+            );
+            if (idx >= 0) this.aria_bot.weapon_manager.switch_weapon(idx);
+        }
         this.tickExecutor.start();
     }
     end() {
@@ -183,6 +830,13 @@ export default class Zomby_game extends game {
     }
     async loop() {
         if (this.destroied) return;
+        if (this.aria_bot_active && this.aria_bot) {
+            try {
+                await this.aria_bot_behavior();
+            } catch (err) {
+                console.log(err);
+            }
+        }
         const powerups_to_remove: LongtimePowerup[] = [];
         for (let powerup of this.current_long_time_powerups) {
             if (
@@ -325,6 +979,14 @@ export default class Zomby_game extends game {
     }
     destroy(): void {
         if (!this.destroied) {
+            if (this.aria_bot) {
+                const bot = this.aria_bot;
+                this.aria_bot = undefined;
+                this.aria_bot_active = false;
+                bot.game = undefined;
+                this.remove(bot);
+                bot.destroy();
+            }
             this.tickExecutor.cancel();
             this.players.forEach((player) => player.reset_to_defaults());
             this.revive_all();

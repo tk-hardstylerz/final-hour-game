@@ -99,21 +99,34 @@ class Game:
         with contextlib.suppress(Exception):
             os.kill(int(pid), signal.SIGTERM)
         speak("Please wait...")
-        while psutil.pid_exists(int(pid)):
+        deadline = time.time() + 10
+        while psutil.pid_exists(int(pid)) and time.time() < deadline:
             time.sleep(0.018)
         if action == "move_to":
             # a past version asked this version to move itself.
             speak("Copying files...")
-            path_utils.copy_folder("./", param)
-            last_cwd = os.getcwd()
-            subprocess.Popen(
-                [f"{param}/final_hour.exe", "rm_dir", last_cwd, str(os.getpid())],
-                cwd=param,
-            )
-            return self.exit()
+            try:
+                path_utils.copy_folder("./", param, log_file="updater_copy.log")
+                last_cwd = os.getcwd()
+                subprocess.Popen(
+                    [f"{param}/final_hour.exe", "rm_dir", last_cwd, str(os.getpid())],
+                    cwd=param,
+                )
+                return self.exit()
+            except Exception as e:
+                # If the copy fails, keep running this version from the
+                # temporary folder instead of crashing silently.
+                with open("updater_copy.log", "a", encoding="utf-8") as f:
+                    f.write(f"move_to failed: {e}\n")
+                speak("The update could not replace the game files. Running the new version from a temporary location.")
+                return
         elif action == "rm_dir":
             if os.path.exists(param):
-                shutil.rmtree(param)
+                try:
+                    shutil.rmtree(param)
+                except Exception as e:
+                    with open("updater_copy.log", "a", encoding="utf-8") as f:
+                        f.write(f"rm_dir failed: {e}\n")
 
     def make_text(self):
         lines = [i[0] for i in speech.history[-3:]]
@@ -168,12 +181,12 @@ class Game:
             speak("Checking version...")
             try:
                 request = requests.get(
-                    "https://raw.githubusercontent.com/Christopher-1808/final-hour-game/master/latest_version.txt",
+                    "https://raw.githubusercontent.com/tk-hardstylerz/final-our-by-the_killer/main/latest_version.txt",
                     timeout=10
                 )
                 request.raise_for_status()
                 latest_version = request.text.strip()
-                if version.compare(latest_version):
+                if version.compare(latest_version) < 0:
                     menus.main_menu(self)
                     speak(f"You are not on the latest version, you are on {version.major}.{version.minor}.{version.patch}, you need to update to {latest_version}")
                     return

@@ -10,6 +10,8 @@ class buffer:
         self.items = []
         self.index = 0
         self.muted = False
+        self.permanent = permanent
+        self.cap = cap
 
     def speak_item(self):
         from .speech import speak as tts
@@ -23,18 +25,31 @@ class buffer_item:
     def format_text(self):
         return self.text
 
-def add_item(game, name, text, speak=True, sound=""):
-    buf = None
+def get_or_create(name, cap=500):
     for b in buffers:
         if b.name == name:
-            buf = b
-            break
-    if buf is None:
-        buf = buffer(name)
-        buffers.append(buf)
+            return b
+    b = buffer(name, name == "general", cap)
+    buffers.append(b)
+    return b
+
+def append_item(buf, text):
+    was_last = len(buf.items) == 0 or buf.index >= len(buf.items) - 1
     item = buffer_item(text)
     buf.items.append(item)
-    buf.index = len(buf.items) - 1
+    if was_last:
+        buf.index = len(buf.items) - 1
+    if len(buf.items) > buf.cap:
+        overflow = len(buf.items) - buf.cap
+        del buf.items[:overflow]
+        buf.index = max(0, buf.index - overflow)
+    return item
+
+def add_item(game, name, text, speak=True, sound="", mirror=True):
+    buf = get_or_create(name)
+    append_item(buf, text)
+    if mirror and name != "general":
+        append_item(get_or_create("general", 1000), text)
     if sound:
         game.direct_soundgroup.play(sound)
 
@@ -49,9 +64,9 @@ def cycle_item(dir):
     elif dir == 2:
         buf.index = max(buf.index - 1, 0)
     elif dir == 3:
-        buf.index = min(buf.index + 10, len(buf.items) - 1)
+        buf.index = 0
     elif dir == 4:
-        buf.index = max(buf.index - 10, 0)
+        buf.index = len(buf.items) - 1
     buf.speak_item()
 
 def cycle(dir):
@@ -66,6 +81,7 @@ def cycle(dir):
         bufferindex = (bufferindex + 5) % len(buffers)
     elif dir == 4:
         bufferindex = (bufferindex - 5) % len(buffers)
+    bufferindex = min(bufferindex, len(buffers) - 1)
     buf = buffers[bufferindex]
     from .speech import speak as tts
     tts(f"Buffer {buf.name}, {len(buf.items)} items", False)
@@ -115,8 +131,15 @@ def format_url(item, short=False):
     return url
 
 def remove_buffer():
+    global bufferindex
     if buffers:
-        buf = buffers.pop(bufferindex)
+        buf = buffers[bufferindex]
+        if buf.permanent:
+            from .speech import speak as tts
+            tts(f"Buffer {buf.name} can't be removed", False)
+            return
+        buffers.pop(bufferindex)
+        bufferindex = min(bufferindex, max(0, len(buffers) - 1))
         from .speech import speak as tts
         tts(f"Removed buffer {buf.name}", False)
 
@@ -142,3 +165,5 @@ def add_buffer(*args):
         permanent = args[1] if len(args) > 1 else False
         cap = args[2] if len(args) > 2 else 500
         buffers.append(buffer(name, permanent, cap))
+
+get_or_create("general", 1000)

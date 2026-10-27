@@ -202,14 +202,16 @@ class Gameplay(state.State):
         elif isinstance(should_block, list):
             events = should_block
         key = pygame.key.get_pressed()
+        scan = self.kc.scan_state
         for i in self.keys_held:
-            if key[i]:
+            sc = self.kc.us_scancode(i)
+            if key[i] or (sc is not None and scan.pressed(sc)):
                 self.keys_held[i](pygame.key.get_mods())
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key in self.keys_pressed:
-                self.keys_pressed[event.key](event.mod)
-            elif event.type == pygame.KEYUP and event.key in self.keys_released:
-                self.keys_released[event.key](event.mod)
+            if event.type == pygame.KEYDOWN and (k := self.kc.us_key_for(event)) in self.keys_pressed:
+                self.keys_pressed[k](event.mod)
+            elif event.type == pygame.KEYUP and (k := self.kc.us_key_for(event)) in self.keys_released:
+                self.keys_released[k](event.mod)
             if not pygame.event.get_grab():
                 pygame.event.set_grab(True)
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -508,7 +510,7 @@ class Gameplay(state.State):
         target = self.camera.focus_object
         template = options.get(
             "location_template",
-            "{x}, \r\n{y}, \r\n{z}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. ",
+            "{x_rounded}, \r\n{y_rounded}, \r\n{z_rounded}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. ",
         )
         balanced = "balanced"
         if target.bfacing < -30 or target.bfacing > 30:
@@ -676,12 +678,8 @@ class Gameplay(state.State):
 
     def number_row(self, mod, pos):
         if self.player.lock_weapon: return
-        if not mod & pygame.KMOD_ALT and pos < 4:
+        if pos < 4:
             self.wmanager.switchWeapon(pos - 1)
-        else:
-            self.game.network.send(
-                consts.CHANNEL_MAP, "get_game_coords", {"player": pos}
-            )
 
     def toggle_beacons(self, mod):
         if option := options.get("beacons"):

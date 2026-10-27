@@ -18,7 +18,7 @@ class Key_config_screen(state.State):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 speak(pygame.key.name(event.key))
-                self.game.keyconfig.set(event.key, self.func)
+                self.game.keyconfig.set(self.game.keyconfig.us_key_for(event), self.func)
                 self.func_call()
                 break
 

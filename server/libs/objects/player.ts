@@ -34,6 +34,10 @@ export default class Player extends entity {
     revive_timer: timer;
     revive_time: number;
     quick_revive: boolean;
+    whos_who: boolean;
+    aria_revives: number = 2;
+    spectator: boolean = false;
+    isBot: boolean = false;
     revivable_sound: boolean;
     low_health: boolean;
     reload_voice: boolean = true;
@@ -52,6 +56,7 @@ export default class Player extends entity {
     defaultMaxHp = 500;
     private lastSafeZ: number = 0;
     private isFalling: boolean = false;
+    private fallStartZ: number = 0;
     constructor({
         server,
         peer,
@@ -77,6 +82,7 @@ export default class Player extends entity {
         this.user = user;
         this.isContributor = contributor;
         this.quick_revive = false;
+        this.whos_who = false;
         server.language_channels[language_channel_name].add_player(this);
         this.being_hit = false;
         this.voice_channel = this.server.get_available_voice_channel();
@@ -122,6 +128,7 @@ export default class Player extends entity {
         if (this.dead) this.revive(true);
         this.revive_timer = new timer();
         this.revive_time = 60000;
+        this.aria_revives = 2;
         this.revivable_sound = true;
         this.low_health = false;
         this.inventory.clear();
@@ -304,7 +311,7 @@ export default class Player extends entity {
         return this.user.save();
     }
     destroy(): void {
-        if (this.game) this.game.remove_player(this);
+        if (this.game && !this.spectator) this.game.remove_player(this);
         super.destroy();
         this.peer.disconnect();
         if (this.language_channel) {
@@ -319,13 +326,22 @@ export default class Player extends entity {
     set_hp(amount: number, obj?: Game_object) {
         if (amount <= this.maxHp && amount > 0) {
             this.hp = amount;
-            this.send(consts.channel_misc, "set_hp", { amount: amount });
+            this.send(consts.channel_misc, "set_hp", {
+                amount: amount,
+                max: this.maxHp,
+            });
         } else if (amount <= 0) {
             this.kill(obj);
-            this.send(consts.channel_misc, "set_hp", { amount: 0 });
+            this.send(consts.channel_misc, "set_hp", {
+                amount: 0,
+                max: this.maxHp,
+            });
         } else if (amount > this.maxHp) {
             this.hp = this.maxHp;
-            this.send(consts.channel_misc, "set_hp", { amount: this.maxHp });
+            this.send(consts.channel_misc, "set_hp", {
+                amount: this.maxHp,
+                max: this.maxHp,
+            });
         }
     }
     revive(silent = false): void {
@@ -394,15 +410,17 @@ export default class Player extends entity {
         this.send(consts.channel_misc, "death", { dead: true });
         if (this.character) this.character.play_sound("death", 1);
         this.dead = true;
-        this.perks.clear(true);
+        if (this.quick_revive || this.whos_who) this.revive_time = 30000;
+        if (!this.whos_who) this.perks.clear(true);
         this.revivable_sound = false;
         this.revive_timer.restart();
         if (
             this.game &&
             this.game.get_dead_players() >= this.game.players.size
         ) {
-            if (this.game.players.size > 1 || this.revive_time == 60000)
-                return this.game.end();
+            if (this.game.players.size > 1 || this.revive_time == 60000) {
+                if (!this.try_aria_save()) return this.game.end();
+            }
         }
         this.game.speak(
             `${this.user.username} just died!`,
@@ -412,7 +430,48 @@ export default class Player extends entity {
             [this.name]
         );
     }
+    try_aria_save(): boolean {
+        if (this.aria_revives <= 0) return false;
+        if (!this.game || !this.game.started) return false;
+        if (this.game.players.size !== 1) return false;
+        if (!this.game.zomby_game) return false;
+        this.aria_revives--;
+        const game = this.game;
+        const remaining = this.aria_revives;
+        game.call_after(1200, () => {
+            if (!game.started) return;
+            const text =
+                `Aria is here! She clears the zombies... ${this.name}, hold on, she is coming to revive you. ` +
+                (remaining > 0
+                    ? `${remaining} rescue${remaining === 1 ? "" : "s"} left.`
+                    : "Last rescue.");
+            game.speak(text, false, "match", "ui/chat.ogg");
+            this.aria_chat(text);
+            const objects = game.map.objects.get({});
+            for (const i of objects) {
+                if (i instanceof Zomby) i.destroy(false);
+            }
+        });
+        game.call_after(4000, () => {
+            if (!this.game || this.destroied || !game.started) return;
+            if (!this.dead) return;
+            this.revive(true);
+            if (this.character) this.character.play_sound("revive", 1);
+            const text = `${this.name} was revived by Aria`;
+            game.speak(text, false, "match", "ui/chat.ogg");
+            this.aria_chat(text);
+        });
+        return true;
+    }
+    private aria_chat(text: string): void {
+        const channels = this.server?.language_channels;
+        if (!channels) return;
+        for (const channel of Object.values(channels)) {
+            channel.send(`Aria: ${text}`, null as any, "chat");
+        }
+    }
     on_hit(object: Game_object, hp?: number, excludeme?: boolean): void {
+        if (this.spectator) return;
         if (object instanceof Zomby || object instanceof Grenade_entity) {
             if (!this.dead) this.set_hp(this.hp - (hp ?? 0), object);
         }
@@ -423,6 +482,9 @@ export default class Player extends entity {
             m.add_option("Create a new match", { action: "create" });
             m.add_option("Join a match", { action: "join" });
             m.add_option("view the leaderboard", { action: "leaderboard" });
+        } else if (this.spectator) {
+            m.add_option("Speak joined players", { action: "who_in" }, false);
+            m.add_option("Stop spectating", { action: "leave" });
         } else {
             m.add_option("Speak joined players", { action: "who_in" }, false);
             if (this.game.owner === this) {
@@ -436,7 +498,10 @@ export default class Player extends entity {
         }
         m.send(this.peer);
     }
-    async create_match(mapname: string): Promise<zomby_game> {
+    async create_match(
+        mapname: string,
+        mode = "multiplayer"
+    ): Promise<zomby_game> {
         if (!this.game) {
             var game_map = await WorldMap.compileMapFromFile(
                 this.server,
@@ -448,8 +513,16 @@ export default class Player extends entity {
                 `Zombies match created by ${this.name} on map ${mapname}`,
                 game_map
             );
+            the_game.mode = mode;
+            if (mode === "coop_aria") the_game.spawn_aria_bot();
+            const mode_label =
+                mode === "solo"
+                    ? "solo"
+                    : mode === "coop_aria"
+                    ? "co-op with Aria"
+                    : "zombies";
             this.server.speak_unbound(
-                `${this.name} has created a zombies game using the map ${mapname}`,
+                `${this.name} has created a ${mode_label} game using the map ${mapname}`,
                 false,
                 "main"
             );
@@ -464,9 +537,37 @@ export default class Player extends entity {
         }
         throw new Error("Already in a game");
     }
-    join_match(name: string): void {
+    join_match(name: string, spectator = false): void {
         var game = this.server.get_game_by_name(name);
-        if (!this.game && game && !game.started) {
+        if (!this.game && game) {
+            if (spectator || game.started) {
+                this.spectator = true;
+                this.game = game;
+                this.change_map(this.server.maps[game.map.mapName]);
+                this.speak(`You are now spectating ${game.name}`, true, "match");
+                this.user.log({
+                    eventType: "match_join",
+                    eventData: {
+                        name: game.name,
+                        player_count: game.players.size - 1,
+                        spectator: true,
+                    },
+                });
+                return;
+            }
+            if (
+                game instanceof zomby_game &&
+                game.mode === "solo"
+            ) {
+                this.speak(
+                    "This is a solo match, other players can't join. Start it to play or spectate it once it starts.",
+                    true,
+                    "notifications"
+                );
+                return;
+            }
+            if (game.players.size >= game.max_players)
+                return this.speak("That match is already full.");
             game.add_player(this);
             this.change_map(this.server.maps[game.map.mapName]);
             this.speak("You are in exploration mode", true, "match");
@@ -547,6 +648,7 @@ export default class Player extends entity {
     }
     async loop(): Promise<void> {
         await super.loop();
+        if (this.spectator) return;
         if (
             this.game &&
             this.weapon_manager.active_weapon?.ammo == 0 &&
@@ -561,22 +663,31 @@ export default class Player extends entity {
         )
             this.reload_voice = true;
         // fall damage detection
-        if (this.z < this.lastSafeZ - 1.5) {
-            this.isFalling = true;
+        const tile = this.map.get_tile_at(
+            Math.trunc(this.x),
+            Math.trunc(this.y),
+            Math.trunc(this.z)
+        );
+        if (tile === "air" || tile === "") {
+            if (!this.isFalling) {
+                this.isFalling = true;
+                this.fallStartZ = this.z;
+            }
         } else if (this.isFalling) {
             this.isFalling = false;
-            const fallDistance = this.lastSafeZ - this.z;
-            if (fallDistance >= 3) {
-                const damage = Math.min(
-                    Math.floor(fallDistance * 3),
-                    this.maxHp - 1
-                );
-                this.set_hp(this.hp - damage);
+            if (tile !== "deep_water" && tile !== "underwater") {
+                const fallDistance = this.fallStartZ - this.z;
+                if (fallDistance >= 5) {
+                    const damage = Math.min(
+                        Math.floor((fallDistance - 4) * 2),
+                        Math.floor(this.maxHp * 0.75),
+                        this.hp - 1
+                    );
+                    if (damage > 0) this.set_hp(this.hp - damage);
+                }
             }
         }
-        if (!this.isFalling && this.z > this.lastSafeZ) {
-            this.lastSafeZ = this.z;
-        }
+        if (!this.isFalling) this.lastSafeZ = this.z;
         // health regeneration
         if (this.health_timer.elapsed > random.random_number(2000, 4000)) {
             this.health_timer.restart();
@@ -622,11 +733,13 @@ export default class Player extends entity {
         angle: number,
         pitch: number
     ): boolean {
+        if (this.spectator) return false;
         if (
             interactor.name != this.name ||
             (this.revive_time == 30000 &&
                 this.game?.players.size == 1 &&
-                this.dead)
+                this.dead) ||
+            (this.whos_who && this.dead)
         ) {
             if (this.revive_timer.elapsed >= this.revive_time) this.revive();
             return true;

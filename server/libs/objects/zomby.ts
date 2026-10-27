@@ -151,7 +151,8 @@ export default class Zomby extends entity {
                         !current_target.open) ||
                     (current_target instanceof Player &&
                         !current_target.being_hit &&
-                        !current_target.dead)
+                        !current_target.dead &&
+                        !current_target.spectator)
                 ) {
                     target = targets[i];
                     break;
@@ -278,6 +279,7 @@ export default class Zomby extends entity {
             if (
                 i.dead ||
                 (i instanceof window && i.open) ||
+                (i instanceof Player && i.spectator) ||
                 i.listenerCount("move") >= 6
             )
                 continue;

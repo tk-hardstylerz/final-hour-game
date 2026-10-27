@@ -79,9 +79,9 @@ export default class Entity extends game_object {
         var newAngle: number;
         if (this instanceof Player) newAngle = angle;
         else newAngle = calculate_angle(this.x, x, this.y, y, this.z, z, 0);
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        this.x = Math.round(x);
+        this.y = Math.round(y);
+        this.z = Math.round(z);
         this.emit("move");
         this.wrappedEvents.emit("move", this.wrapped);
         this.map.send(
@@ -89,9 +89,9 @@ export default class Entity extends game_object {
             "move",
             {
                 name: this.name,
-                x: x,
-                y: y,
-                z: z,
+                x: this.x,
+                y: this.y,
+                z: this.z,
                 play_sound: play_sound,
                 mode: mode,
                 angle: newAngle,

@@ -1,4 +1,5 @@
 import functools
+import contextlib
 from operator import mod
 from string import Template
 from . import menu, options, updater, keyconfig, consts, speech, audio_manager
@@ -142,8 +143,8 @@ def options_menu(game, func_call, replace_call=None, parent=None, in_game=False)
             "Set which HRTF Model you would like to use. Currently set to "+str(options.get("hrtf_model", game.audio_mngr.hrtf.current_model)),
             lambda: hrtf_model_menu(game, func_call=func_call if in_game else lambda: options_menu(game, func_call, in_game=in_game), replace_call=replace_call, parent=parent)
         ),
-        ("edit location template. Currently set to: "+options.get("location_template", "{x}, \r\n{y}, \r\n{z}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. "), lambda: configure_location_template(game, func_call=func_call if in_game else lambda: options_menu(game, func_call, in_game=in_game), replace_call=replace_call)),
-        ("reset your location template to default", lambda: options.set("location_template",             "{x}, \r\n{y}, \r\n{z}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. ")),
+        ("edit location template. Currently set to: "+options.get("location_template", "{x_rounded}, \r\n{y_rounded}, \r\n{z_rounded}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. "), lambda: configure_location_template(game, func_call=func_call if in_game else lambda: options_menu(game, func_call, in_game=in_game), replace_call=replace_call)),
+        ("reset your location template to default", lambda: options.set("location_template",             "{x_rounded}, \r\n{y_rounded}, \r\n{z_rounded}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. ")),
         ("Configure key bindings.", lambda: keyconfig_menu(game, func_call=func_call if in_game else lambda: options_menu(game, func_call, in_game=in_game), replace_call=replace_call, parent=parent, in_game=in_game)),
     ]
     items.append(("Back", lambda: func_call()))
@@ -223,13 +224,18 @@ def keyconfig_menu(game, func_call, replace_call=None, parent=None, in_game=Fals
     replace_call(m)
 
 
-def update_question(game, canceler):
+def update_question(game, canceler, latest_version=None):
     """ask user if they want to update. replace with {canceler} if the user presses no"""
-    m = menu.Menu(game, "An update is available! Would you like to update now?")
+    title = (
+        f"An update to version {latest_version} is available! Would you like to update now?"
+        if latest_version
+        else "An update is available! Would you like to update now?"
+    )
+    m = menu.Menu(game, title)
     set_default_sounds(m)
     m.add_items(
         (
-            ("Yes", lambda: game.replace(updater.Updater(game, check=False))),
+            ("Yes", lambda: game.replace(updater.Updater(game, check=False, latest_version=latest_version))),
             ("No", lambda: game.replace(canceler)),
         )
     )
@@ -249,7 +255,7 @@ def configure_location_template(game, func_call, replace_call=None):
     replace_call(
         game.input.run(
             "Enter a template. Surround variable names in braces. Variable names can be found in the documentation. ",
-            default=options.get("location_template",             "{x}, \r\n{y}, \r\n{z}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. "),
+            default=options.get("location_template",             "{x_rounded}, \r\n{y_rounded}, \r\n{z_rounded}, \r\nOn {tile} \r\nFacing {direction} at {angle} degrees with a pitch of {pitch} degrees. \r\nYou are leaning by {lean} degrees and you are {balanced}. "),
             handeler=lambda message: configure_location_template2(game, message, func_call)
         )
     )
@@ -317,9 +323,16 @@ def input_menu(game, func_call, replace_call=None, parent=None, in_game=False):
 def set_input_device(game, device, func_call, parent, capture, in_game=False):
     options.set("audio_input_device", device)
     if device == "system default": device = str(capture.default_device.decode('utf-8'))
-    if in_game and parent.voice_chat.audio_input.name != device: 
-        del parent.voice_chat.audio_input
-        parent.voice_chat.audio_input = parent.voice_chat.capture_ext.open_device(name=device.encode(), sample_rate=48000, format=cyal.BufferFormat.MONO16)
+    if in_game and parent.voice_chat.audio_input is not None and parent.voice_chat.audio_input.name != device:
+        old = parent.voice_chat.audio_input
+        try:
+            parent.voice_chat.audio_input = parent.voice_chat.capture_ext.open_device(name=device.encode(), sample_rate=48000, format=cyal.BufferFormat.MONO16)
+            parent.voice_chat.audio_input.start()
+            with contextlib.suppress(Exception):
+                old.stop()
+        except Exception as e:
+            parent.voice_chat.audio_input = old
+            speech.speak(f"Failed to open device: {e}")
     func_call()
 
 

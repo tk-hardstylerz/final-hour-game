@@ -43,6 +43,7 @@ export default class LongtimePowerup extends Powerup {
                 }
             }
         }
+        this.game.speak(`${this.name}!`);
     }
     async update(): Promise<void> {}
     async deactivate(): Promise<void> {
@@ -59,5 +60,6 @@ export default class LongtimePowerup extends Powerup {
                 );
             }
         }
+        this.game.speak(`${this.name} ended`);
     }
 }

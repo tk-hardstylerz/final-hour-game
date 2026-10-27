@@ -25,6 +25,7 @@ import { uuid } from "@supercharge/strings";
 import { parseValue, to_num } from "../string_utils";
 import path from "path";
 import { MapObjectExport, exportedMap } from "./types";
+import { parseTextFormat } from "./text_parser";
 import Zone from "./elements/zone";
 import Ambience from "./elements/ambience";
 import SoundSource from "./elements/sound_source";
@@ -504,8 +505,7 @@ export default class WorldMap extends PlayerContainer {
         }
     }
     async update(newData: string): Promise<void> {
-        // Create a temp map with this data. This is the lazy way around since if the new map errors, we just abort and never overwrite the current map.
-        await WorldMap.compileMapXmlFromString(
+        await WorldMap.compileMapFromText(
             new WorldMap(
                 this.server,
                 this.mapName,
@@ -515,7 +515,6 @@ export default class WorldMap extends PlayerContainer {
             ),
             newData
         );
-        // At this point attempting to create a new map with this data did not fail, so the data is most likely safe.
         const path = `maps/${this.mapName}.map`;
         await fs.writeFile(path, newData);
         this.platforms = [];
@@ -525,7 +524,7 @@ export default class WorldMap extends PlayerContainer {
         this.allElements = [];
         this.wallbuys = [];
         this.destroy_objects();
-        await WorldMap.compileMapXmlFromString(this, newData);
+        await WorldMap.compileMapFromText(this, newData);
         this.send(consts.channel_map, "update_map", {
             data: this.ExportToClient(),
         });
@@ -595,10 +594,38 @@ export default class WorldMap extends PlayerContainer {
             10,
             10
         );
-        return this.compileMapXmlFromString(
-            map,
-            await fs.readFile(filePath, { encoding: "utf-8" })
-        );
+        const text = await fs.readFile(filePath, { encoding: "utf-8" });
+        if (text.trim().startsWith("<")) {
+            return this.compileMapXmlFromString(map, text);
+        }
+        return this.compileMapFromText(map, text);
+    }
+    static async compileMapFromText(
+        map: WorldMap,
+        text: string
+    ): Promise<WorldMap> {
+        map.destroyMapScript();
+        map.allElementsIds.clear();
+        map.real_data = text;
+        const result = parseTextFormat(text);
+        map.minx = result.bounds.minx;
+        map.maxx = result.bounds.maxx;
+        map.miny = result.bounds.miny;
+        map.maxy = result.bounds.maxy;
+        map.minz = result.bounds.minz;
+        map.maxz = result.bounds.maxz;
+        map.public_ = result.public_;
+        map.round_sounds = result.roundSounds;
+        for (const element of result.elements) {
+            if (element.type in mapElements) {
+                new mapElements[element.type](map, {
+                    ...element.properties,
+                    id: element.properties.id ?? uuid(),
+                });
+            }
+        }
+        map.update_pathfinder();
+        return map;
     }
     static async compileMapXmlFromString(
         map: WorldMap,

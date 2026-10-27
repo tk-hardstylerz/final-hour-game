@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://final-hour.net/map_schema.xsd" bounds="-20 20 -80 20 -20 40">
+    <head>
+    </head>
+    <body>
+        <platform bounds="-20 20 0 20 0 20" type="wall"/>
+        <platform bounds="-20 20 0 20 20 20" type="concrete"/>
+        <platform bounds="-19 19 1 19 1 20" type="air"/>
+        <platform bounds="-19 19 -20 19 0 0" type="snow"/>
+        <platform bounds="-20 20 -20 -20 0 29" type="wallwood"/>
+        <platform bounds="-20 20 1 1 29 29" type="wallwood"/>
+        <platform bounds="-20 -3 1 1 0 29" type="wallwood"/>
+        <platform bounds="3 20 1 1 0 29" type="wallwood"/>
+        <platform bounds="-20 20 -20 -20 0 29" type="wallwood"/>
+        <platform bounds="-20 -20 -20 1 0 29" type="wallwood"/>
+        <platform bounds="20 20 -20 1 0 29" type="wallwood"/>
+        <platform bounds="-20 -20 -20 1 0 29" type="wallwood"/>
+        <platform bounds="20 20 -20 1 0 29" type="wallwood"/>
+        <platform bounds="-19 19 -19 0 0 0" type="wood"/>
+        <platform bounds="-18 18 -18 -1 0 0" type="carpet"/>
+        <platform bounds="-19 19 -19 0 1 28" type="air"/>
+        <platform bounds="16 20 -20 0 0 10" type="wallwood"/>
+        <platform bounds="16 19 -19 0 10 10" type="wood"/>
+        <platform bounds="15 15 -19 -19 0 10" type="metal"/>
+        <platform bounds="15 15 0 0 0 10" type="metal"/>
+        <platform bounds="-20 20 -80 1 30 30" type="metal"/>
+        <platform bounds="19 19 0 0 10 30" type="metal"/>
+        <door bounds="-2 2 1 1 0 5" walltype="wallglass" tiletype="wood" minpoints="0"/>
+        <platform bounds="-19 19 10 19 0 0" type="deep_water"/>
+        <platform bounds="-19 19 10 19 -1 -1" type="underwater"/>
+        <zone bounds="-20 20 -20 1 0 29">
+            the lobby hall
+        </zone>
+        <zone bounds="-20 20 -80 1 30 40">
+            the roof
+        </zone>
+        <zone bounds="-20 20 1 10 0 40">
+            a snowy river bank
+        </zone>
+        <zone bounds="-20 20 10 20 0 40">
+            a river
+        </zone>
+        <zone bounds="-2 2 0 2 0 5">
+            the door
+        </zone>
+        <zone bounds="15 19 -19 0 10 29">
+            the stage
+        </zone>
+        <zone bounds="15 15 -19 -19 0 29">
+            the southern stage ladder
+        </zone>
+        <zone bounds="15 15 0 0 0 29">
+            the northern stage ladder
+        </zone>
+        <zone bounds="19 19 0 0 10 40">
+            the roof ladder
+        </zone>
+        <playerSpawn bounds="-5 5 -15 -5 0 0"/>
+        <playerSpawn bounds="16 19 -19 -1 10 10"/>
+        <zombieSpawn bounds="-20 -10 -80 -40 0 29"/>
+        <zombieSpawn bounds="10 20 -80 -40 0 29"/>
+        <zombieSpawn bounds="-20 20 -80 -70 0 29"/>
+        <zombieSpawn bounds="-20 20 -60 -50 0 29"/>
+        <zombieSpawn bounds="-20 -10 0 20 0 29"/>
+        <zombieSpawn bounds="10 20 0 20 0 29"/>
+        <zombieSpawn bounds="-20 -10 -20 -1 0 29"/>
+        <zombieSpawn bounds="10 20 -20 -1 0 29"/>
+        <zombieSpawn bounds="-20 20 -10 -1 30 40"/>
+        <zone bounds="-20 -19 1 20 0 25">
+            the yard wall
+        </zone>
+        <zone bounds="19 20 1 20 0 25">
+            the yard wall
+        </zone>
+        <zone bounds="-20 20 19 20 0 25">
+            the yard wall
+        </zone>
+        <zone bounds="-3 3 -11 -9 0 29">
+            beneath a skylight
+        </zone>
+        <zone bounds="-3 3 -11 -9 30 40">
+            a skylight
+        </zone>
+        <platform bounds="-4 4 -12 -8 30 30" type="wood"/>
+        <platform bounds="-3 3 -11 -9 30 30" type="metal"/>
+        <platform bounds="-3 3 -11 -9 28 28" type="metal"/>
+        <door bounds="-3 3 -11 -9 29 29" walltype="wallglass" tiletype="metal" minpoints="0"/>
+        <music bounds="-20 20 -80 20 -20 40" sound="3.ogg"/>
+        <soundSource bounds="-20 20 -39 1 0 29" sound="ambience/room1.ogg" volume="10"/>
+        <soundSource bounds="-20 20 -80 1 0 29" sound="ambience/room2.ogg" volume="2"/>
+        <soundSource bounds="-20 20 9 20 -1 19" sound="ambience/water1.ogg" volume="20"/>
+        <soundSource bounds="-20 20 1 20 -1 19" sound="ambience/wind1.ogg" volume="5"/>
+        <soundSource bounds="-20 20 0 20 20 29" sound="ambience/wind1.ogg" volume="5"/>
+        <soundSource bounds="-20 20 -80 20 30 40" sound="ambience/wind1.ogg" volume="20"/>
+        <platform bounds="-20 20 -20 20 -1 -1" type="wall"/>
+        <window position="-4 1 0" hp="1000000000"/>
+        <window position="4 1 0" hp="10000"/>
+        <platform bounds="-20 20 -40 -21 0 0" type="carpet"/>
+        <platform bounds="-20 20 -40 -20 10 10" type="wallwood"/>
+        <platform bounds="-3 -3 -40 -20 0 10" type="wallwood"/>
+        <platform bounds="3 3 -40 -20 0 10" type="wallwood"/>
+        <zone bounds="-3 3 -40 -20 0 10">
+            a carpeted hallway
+        </zone>
+        <zone bounds="-20 -3 -40 -20 0 10">
+            the command centre
+        </zone>
+        <zone bounds="3 20 -40 -20 0 10">
+            a small, cosy lounge
+        </zone>
+        <platform bounds="-19 0 -19 -10 21 22" type="metal"/>
+        <zone bounds="-19 0 -19 -10 21 25">
+            the sexy grappling platform
+        </zone>
+        <zone bounds="-200 20 -20 20 40 70">
+            heaven
+        </zone>
+        <zone bounds="-20 20 -20 20 -1 -1">
+            Under water
+        </zone>
+        <reverb bounds="-20 20 -20 0 0 29" decayTime="0.9" diffusion="0.3"/>
+        <platform bounds="-20 20 -40 40 -1 -1" type="wallwood"/>
+        <platform bounds="-19 19 10 19 -1 -1" type="underwater"/>
+        <platform bounds="-20 20 -80 -40 0 29" type="wallglass"/>
+        <platform bounds="-19 19 -79 -41 0 0" type="concrete"/>
+        <platform bounds="-2 2 -40 -40 0 0" type="metal"/>
+        <door bounds="-2 2 -40 -40 0 5" tiletype="metal" walltype="wallglass" minpoints="0"/>
+        <platform bounds="-15 15 -75 -45 0 0" type="deep_water"/>
+        <platform bounds="-19 19 -79 -41 1 29" type="air"/>
+        <platform bounds="-20 20 -80 -40 -20 -1" type="wall"/>
+        <platform bounds="-15 15 -75 -45 -19 -1" type="underwater"/>
+        <reverb bounds="-20 20 -80 -40 -2 29" decayTime="3.0" density="0.2"/>
+        <soundSource bounds="-16 16 -76 -44 -6 0" sound="ambience/water1.ogg" volume="5"/>
+        <ambience bounds="-16 16 -76 -44 -20 -7" sound="ambience/water1.ogg" volume="50"/>
+        <zone bounds="-20 20 -80 -40 0 29">
+            a large swimming pool
+        </zone>
+        <zone bounds="-15 15 -75 -45 0 29">
+            In the swimming pool
+        </zone>
+        <zone bounds="-15 15 -75 -45 -20 -1">
+            under the surface of the pool
+        </zone>
+        <zone bounds="-2 2 -41 -39 0 5">
+            A glass door to a swimming pool
+        </zone>
+        <platform bounds="10 12 -44 -43 0 15" type="metal"/>
+        <platform bounds="10 12 -50 -45 15 15" type="wood"/>
+        <zone bounds="10 12 -44 -43 0 29">
+            a ladder to a diving board
+        </zone>
+        <zone bounds="10 12 -50 -45 15 29">
+            the diving board
+        </zone>
+        <platform bounds="-2 2 -20 -20 0 0" type="wood"/>
+        <door bounds="-2 2 -20 -20 0 0" walltype="wallglass" tiletype="wood" minpoints="0"/>
+        <door bounds="-19 19 -0 -0 29 30" walltype="wallglass" tiletype="metal" minpoints="0"/>
+        <soundSource bounds="-100 100 -200 200 -1 19" sound="music/11.ogg" volume="1"/>
+        <powerSwitch position="0 -1 0" cost="0"/>
+        <perkMachine position="0 -70 0" sound="perks/music/whos_who.ogg" perk="juggernog"/>
+        <perkMachine position="-10 -60 0" sound="perks/music/deadshot_daiquiri.ogg" perk="juggernog"/>
+        <perkMachine position="10 -60 0" sound="perks/music/staminup.ogg" perk="juggernog"/>
+        <platform bounds="9 11 -20 -20 0 0" type="wood"/>
+        <platform bounds="9 11 -20 -20 1 5" type="air"/>
+        <door bounds="9 11 -20 -20 0 5" tiletype="wood" walltype="wallglass"/>
+        <zone bounds="9 11 -21 -19 0 5">
+            Door to the lounge
+        </zone>
+        <reverb bounds="3 20 -39 -21 0 5" decayTime="0.8" density="0.5"/>
+        <music bounds="-20 20 -80 20 -20 40" sound="1.ogg"/>
+    
+        <wallbuy bounds="15 17 -18 -16 0 0" weaponName="m1911" weaponCost="500" ammoCost="100"/>
+
+        <perkMachine position="16 0 0" sound="perks/music/juggernog.ogg" perk="juggernog"/>
+
+        <perkMachine position="19 -10 30" sound="perks/music/speed_cola.ogg" perk="speed_cola"/>
+
+        <wallbuy bounds="-2 0 -46 -44 0 0" weaponName="mp7" weaponCost="100" ammoCost="500"/>
+
+        <perkMachine position="15 -19 0" sound="perks/music/juggernog.ogg" perk="juggernog"/>
+
+        <perkMachine position="3 -27 0" sound="perks/music/juggernog.ogg" perk="juggernog"/>
+
+        <perkMachine position="-2 -23 0" sound="perks/music/quick_revive.ogg" perk="quick_revive"/>
+
+        <wallbuy bounds="14 16 1 3 0 0" weaponName="m60" weaponCost="100" ammoCost="100"/>
+
+        <perkMachine position="-19 -13 0" sound="perks/music/double_tap_root_beer.ogg" perk="double_tap_root_beer"/>
+
+        <ambience bounds="-16 -6 -24 -14 0 0" sound="ambience/room1.ogg" volume="5"/>
+
+        <perkMachine position="-11 -19 0" sound="perks/music/staminup.ogg" perk="staminup"/>
+
+        <wallbuy bounds="-20 -18 -42 -40 0 0" weaponName="ak47" weaponCost="100" ammoCost="100"/>
+
+        <wallbuy bounds="19 21 -80 -78 0 0" weaponName="utr45" weaponCost="5" ammoCost="5"/>
+
+        <wallbuy bounds="-20 -18 -79 -77 0 0" weaponName="m16" weaponCost="1000" ammoCost="500"/>
+
+        <wallbuy bounds="18 20 -43 -41 0 0" weaponName="dragunov_sniper" weaponCost="1" ammoCost="1"/>
+
+        <door bounds="-3 -1 -42 -40 0 5" walltype="wallglass" tiletype="concrete" minpoints="0"/>
+</body>
+    <!-- A test map script
+    <script><![CDATA[
+        events.on("playerAdded", (player) => {
+        player.speak(`This is a test of map scripts. ${player.id}, Welcome to main! As of the time of this message, there are ${players.length} other players in this map.`);
+        });
+        ]]></script>
+        -->
+</map>>

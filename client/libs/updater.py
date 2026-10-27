@@ -2,6 +2,7 @@ import os
 import shutil
 import zipfile
 import subprocess
+import contextlib
 from pygame import key
 import requests
 import pySmartDL as dl
@@ -11,21 +12,16 @@ from .speech import speak
 
 nothing = lambda: None
 
+latest_version_url = "https://raw.githubusercontent.com/tk-hardstylerz/final-our-by-the_killer/main/latest_version.txt"
+download_url_template = "https://github.com/tk-hardstylerz/final-our-by-the_killer/releases/download/v{version}/fh.zip"
+
 
 class Updater(state.State):
-    def __init__(self, game, check=True):
+    def __init__(self, game, check=True, latest_version=None):
         super().__init__(game)
         self.check = check
+        self.latest_version = latest_version
         self.downloader = None
-        try:
-            self.downloader = dl.SmartDL(
-                "https://github.com/Christopher-1808/final-hour-game/releases/download/v1.5.0/fh.zip",
-                threads=2,
-                progress_bar=False,
-                timeout=10,
-            )
-        except Exception:
-            pass
         self.last_progress = 0
         self.paused = False
 
@@ -35,17 +31,34 @@ class Updater(state.State):
             if self.check:
                 speak("Checking version...")
                 request = requests.get(
-                    "https://raw.githubusercontent.com/Christopher-1808/final-hour-game/master/latest_version.txt",
+                    latest_version_url,
                     timeout=10
                 )
                 request.raise_for_status()
-                latest_version = request.text.strip()
-                if version.compare(latest_version):
-                    return menus.update_question(self.game, lambda: menus.main_menu(self.game))
+                self.latest_version = request.text.strip()
+                if version.compare(self.latest_version) < 0:
+                    return menus.update_question(
+                        self.game,
+                        lambda: menus.main_menu(self.game),
+                        self.latest_version,
+                    )
                 menus.main_menu(self.game)
                 speak("You are running the latest version", False)
                 return
             else:
+                if not self.latest_version:
+                    speak("Update cancelled: no version to download.")
+                    return menus.main_menu(self.game)
+                try:
+                    self.downloader = dl.SmartDL(
+                        download_url_template.format(version=self.latest_version),
+                        threads=2,
+                        progress_bar=False,
+                        timeout=10,
+                    )
+                except Exception as e:
+                    speak(f"Could not start the download: {e}")
+                    return menus.main_menu(self.game)
                 speak("The download is starting...")
                 self.downloader.start(blocking=False)
                 self.replace_last_substate(self.downloading_menu())
@@ -77,6 +90,9 @@ class Updater(state.State):
                 last_cwd = os.getcwd()
                 os.chdir(path)
                 file.extractall()
+                file.close()
+                with contextlib.suppress(OSError):
+                    os.remove(filename)
                 path = f"{path}/final_hour"
                 subprocess.Popen(
                     [f"{path}/final_hour.exe", "move_to", last_cwd, str(os.getpid())],

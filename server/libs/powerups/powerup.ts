@@ -27,5 +27,6 @@ export default class Powerup {
                 player.play_direct(this.announcement_sound, false, 30);
             }
         }
+        this.game.speak(`${this.name}!`);
     }
 }

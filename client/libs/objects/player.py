@@ -1,7 +1,6 @@
 from .. import consts 
 from ..speech import speak
 from .entity import Entity
-from random import randint as random
 
 
 class Player(Entity):
@@ -20,6 +19,7 @@ class Player(Entity):
         self.drownable = False
         self.movetime = self.walktime
         self.turntime = 5
+        self.max_hp = 100
         self.turning_clock = game.new_clock()
         self.player = True
         self.is_user = True
@@ -71,14 +71,10 @@ class Player(Entity):
 
     def fall_stop(self):
         super().fall_stop()
-        self.hp = self.hp - (self.fall_distance / 2 + random(-3, 3))
-        self.game.network.send(consts.CHANNEL_MISC, "set_hp", {"amount": self.hp})
         self.fall_distance = 0
         self.stunned = True
         self.stunned_clock.restart()
         self.play_sound("death/start.ogg", cat="self")
-        if self.hp <= 0 or self.hp > 100:
-            self.hp = 100
 
     @property
     def hp(self):
@@ -87,4 +83,4 @@ class Player(Entity):
     @hp.setter
     def hp(self, value):
         if self.lock_weapon: return
-        self._hp = value if 0 <= value <= 100 else self._hp
+        self._hp = value if 0 <= value <= self.max_hp else self._hp

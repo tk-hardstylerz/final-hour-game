@@ -18,6 +18,7 @@ import EventEmitter from "./event_emitter";
 import WorldMap from "./world_map";
 import consts from "./consts";
 import { json } from "sequelize";
+import AiRelay from "./ai_relay";
 
 export default class Server extends EventEmitter<Server> {
     database: Database;
@@ -31,6 +32,7 @@ export default class Server extends EventEmitter<Server> {
     updating: boolean;
     language_channels: { [key: string]: language_channel };
     discord: discord;
+    ai_relay: AiRelay;
     should_tick: boolean;
     host: any;
     weapon_data: Record<string, any> = {};
@@ -66,6 +68,8 @@ export default class Server extends EventEmitter<Server> {
         this.update_weapons();
         this.discord = new discord(this, ignore_discord);
         this.discord.callbacks();
+        this.ai_relay = new AiRelay(this);
+        this.ai_relay.start();
         this.should_tick = true;
         this.database.initialize().then((value) => {
             this.system_log("Initializing server...");
@@ -249,20 +253,12 @@ export default class Server extends EventEmitter<Server> {
     }): Promise<map> {
         const path = `maps/${name}.map`;
         if (!(await file.exists(path))) {
-            const map_data = `<?xml version="1.0" encoding="UTF-8"?>
-{# This map was generated automatically. After making your initial update, please delete these comments.
-For any assistance with building please read the docs found at https://finalhour.lowerelements.club/docs.
-While building remember that you can use the built in scripting for maps. You can find the documentation at https://mozilla.github.io/nunjucks/templating.
-#}
-<map xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://final-hour.net/map_schema.xsd"
-    bounds="${minx} ${maxx} ${miny} ${maxy} ${minz} ${maxz}">
-    <head>
-        <public/>
-    </head>
-    <body>
-        <platform bounds="${minx} ${maxx} ${miny} ${maxy} ${minz} ${maxz}" type="wood"/>
-    </body>
-</map>
+            const map_data = `# Map: ${name}
+# This map was generated automatically.
+bounds ${minx} ${maxx} ${miny} ${maxy} ${minz} ${maxz}
+public
+
+platform ${minx} ${maxx} ${miny} ${maxy} ${minz} ${maxz} wood
             `;
             await fs.promises.writeFile(path, map_data);
             var _map = await WorldMap.compileMapFromFile(this, path);

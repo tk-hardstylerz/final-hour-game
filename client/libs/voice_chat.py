@@ -1,6 +1,7 @@
 import threading
 import time
 import queue
+import contextlib
 import cyal.exceptions
 from pyogg import OpusEncoder, OpusDecoder
 import cyal
@@ -89,7 +90,9 @@ class VoiceChatRecord(threading.Thread):
     def run(self):
         while self.running:
             time.sleep(0.0005)
-            if self.audio_input is None or not options.get("microphone", True) or not options.get("voice_chat", True): continue
+            if self.audio_input is None or not options.get("microphone", True) or not options.get("voice_chat", True):
+                self.recording = False
+                continue
             samples = self.audio_input.available_samples
             if samples >= 960:
                 buf = bytearray(960 * 2)
@@ -99,8 +102,10 @@ class VoiceChatRecord(threading.Thread):
 
     def voice_chat_finish(self):
         self.voice_chat_finish2()
-    
+
     def voice_chat_finish2(self):
+        if self.audio_input is None:
+            return
         samples = self.audio_input.available_samples
         if samples < 960:
             if samples > 0:
@@ -113,6 +118,10 @@ class VoiceChatRecord(threading.Thread):
         self.vc_compression.put(buf)
     
     def close(self):
-        self.vc_compression.put(None)
+        self.recording = False
         self.running = False
-        
+        self.vc_compression.put(None)
+        if self.audio_input is not None:
+            with contextlib.suppress(Exception):
+                self.audio_input.stop()
+

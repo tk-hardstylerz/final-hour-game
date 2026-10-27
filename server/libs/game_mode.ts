@@ -142,14 +142,33 @@ export default class Game extends PlayerContainer {
         delete this.scores[player.name];
         player.game = undefined;
         if (speak && player === this.owner && this.players.size) {
-            this.owner = Array.from(this.players)[0];
+            const real = Array.from(this.players).filter((p) => !p.isBot);
+            if (real.length) {
+                this.owner = real[0];
+                this.speak(
+                    `This match's ownership has been given to ${this.owner.name}.`,
+                    false
+                );
+            }
+        }
+        if (
+            this.players.size &&
+            !Array.from(this.players).some((p) => !p.isBot)
+        ) {
             this.speak(
-                `This match's ownership has been given to ${this.owner.name}.`,
-                false
+                "The match has ended, only Aria was left behind.",
+                false,
+                "match"
             );
         }
         if (player.map === this.map) {
             player.change_map(this.server.maps.main);
+        }
+        if (
+            this.players.size &&
+            !Array.from(this.players).some((p) => !p.isBot)
+        ) {
+            this.destroy();
         }
         if (destroy_if_empty && !this.players.size) {
             this.destroy();

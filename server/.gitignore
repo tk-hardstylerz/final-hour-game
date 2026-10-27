@@ -12,3 +12,10 @@ authorised_names
 database.sqlite3
 npm-debug.log
 sm.txt
+gemini_key.txt
+groq_key.txt
+ai_outbox.log
+ai_outbox.state
+ai_inbox.log
+ai_memory.log
+aria_voice_cache/

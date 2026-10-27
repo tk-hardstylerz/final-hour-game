@@ -7,7 +7,7 @@ export default class PerkManager {
     readonly server: Server;
     readonly owner: Entity;
     readonly slotChangeEvents = new EventEmitter<number>();
-    perks = new Array<Perk | null>(4).fill(null);
+    perks = new Array<Perk | null>(6).fill(null);
     constructor(server: Server, owner: Entity) {
         this.server = server;
         this.owner = owner;
